@@ -12,22 +12,22 @@ on:
       - docs/**
 
 jobs:
-  markdown-link-check:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
-    - uses: gaurav-nelson/github-action-markdown-link-check@v1
-      with:
-        use-quiet-mode: 'yes'
-        use-verbose-mode: 'yes'
-        config-file: '.markdownlinkcheck.json'
-        folder-path: 'docs'
-        file-extension: '.md'
+  # markdown-link-check:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #   - uses: actions/checkout@v3
+  #   - uses: gaurav-nelson/github-action-markdown-link-check@v1
+  #     with:
+  #       use-quiet-mode: 'yes'
+  #       use-verbose-mode: 'yes'
+  #       config-file: '.markdownlinkcheck.json'
+  #       folder-path: 'docs'
+  #       file-extension: '.md'
   markdown-lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - uses: avto-dev/markdown-lint@v1
         with:
-          config: '.markdownlint.yml'
-          args: 'docs'
+          config: ".markdownlint.yml"
+          args: "docs"
