@@ -16,3 +16,4 @@ vendor/
 
 dist/
 .vscode/
+terraform-provider-confluent-schema-registry
