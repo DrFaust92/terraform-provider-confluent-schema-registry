@@ -56,7 +56,7 @@ func resourceSchema() *schema.Resource {
 			"version": {
 				Type:        schema.TypeInt,
 				Computed:    true,
-				Description: "The schema string",
+				Description: "The schema version",
 			},
 			"reference": {
 				Type:        schema.TypeList,
