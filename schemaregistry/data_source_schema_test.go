@@ -2,17 +2,19 @@ package schemaregistry
 
 import (
 	"fmt"
-	"github.com/riferrei/srclient"
 	"os"
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/riferrei/srclient"
 
 	uuid "github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 )
 
 func TestAccDataSourceSchema_basic(t *testing.T) {
+	dataSourceName := "data.schemaregistry_schema.test"
 	u, err := uuid.GenerateUUID()
 	if err != nil {
 		t.Fatal(err)
@@ -26,11 +28,11 @@ func TestAccDataSourceSchema_basic(t *testing.T) {
 			{
 				Config: fixtureDataSourceSchemaBuild(subject, fixtureAvro1),
 				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr("data.schemaregistry_schema.test", "id", subject),
-					resource.TestCheckResourceAttr("data.schemaregistry_schema.test", "subject", subject),
-					resource.TestCheckResourceAttr("data.schemaregistry_schema.test", "version", "1"),
-					resource.TestCheckResourceAttr("data.schemaregistry_schema.test", "schema", strings.Replace(fixtureAvro1, "\\", "", -1)),
-					resource.TestCheckResourceAttrSet("data.schemaregistry_schema.test", "schema_id"),
+					resource.TestCheckResourceAttr(dataSourceName, "id", subject),
+					resource.TestCheckResourceAttr(dataSourceName, "subject", subject),
+					resource.TestCheckResourceAttr(dataSourceName, "version", "1"),
+					resource.TestCheckResourceAttr(dataSourceName, "schema", strings.Replace(fixtureAvro1, "\\", "", -1)),
+					resource.TestCheckResourceAttrSet(dataSourceName, "schema_id"),
 				),
 			},
 		},
@@ -39,6 +41,7 @@ func TestAccDataSourceSchema_basic(t *testing.T) {
 
 func TestAccDataSourceSchemaReferences_basic(t *testing.T) {
 	// GIVEN
+	dataSourceName := "data.schemaregistry_schema.schemaWithReference"
 	url, found := os.LookupEnv("SCHEMA_REGISTRY_URL")
 	if !found {
 		t.Fatalf("SCHEMA_REGISTRY_URL must be set for acceptance tests")
@@ -72,11 +75,11 @@ func TestAccDataSourceSchemaReferences_basic(t *testing.T) {
 	}
 
 	// AND
-	if _, err = client.CreateSchemaWithArbitrarySubject(referencedSchemaSubject, referencedSchema, srclient.Avro); err != nil {
+	if _, err = client.CreateSchema(referencedSchemaSubject, referencedSchema, srclient.Avro); err != nil {
 		t.Fatalf("could not create schema for subject: %s, err: %s", referencedSchema, err)
 	}
 
-	if _, err = client.CreateSchemaWithArbitrarySubject(schemaWithReferenceSubject, schemaWithReference, srclient.Avro, references...); err != nil {
+	if _, err = client.CreateSchema(schemaWithReferenceSubject, schemaWithReference, srclient.Avro, references...); err != nil {
 		t.Fatalf("could not create schema for subject: %s, err: %s", referencedSchemaSubject, err)
 	}
 
@@ -92,16 +95,16 @@ func TestAccDataSourceSchemaReferences_basic(t *testing.T) {
 					}
 				`, schemaWithReferenceSubject),
 				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr("data.schemaregistry_schema.schemaWithReference", "id", schemaWithReferenceSubject),
-					resource.TestCheckResourceAttr("data.schemaregistry_schema.schemaWithReference", "subject", schemaWithReferenceSubject),
-					resource.TestCheckResourceAttrSet("data.schemaregistry_schema.schemaWithReference", "schema_id"),
-					resource.TestCheckResourceAttr("data.schemaregistry_schema.schemaWithReference", "version", "1"),
-					resource.TestCheckResourceAttr("data.schemaregistry_schema.schemaWithReference", "schema", schemaWithReference),
+					resource.TestCheckResourceAttr(dataSourceName, "id", schemaWithReferenceSubject),
+					resource.TestCheckResourceAttr(dataSourceName, "subject", schemaWithReferenceSubject),
+					resource.TestCheckResourceAttrSet(dataSourceName, "schema_id"),
+					resource.TestCheckResourceAttr(dataSourceName, "version", "1"),
+					resource.TestCheckResourceAttr(dataSourceName, "schema", schemaWithReference),
 
-					resource.TestCheckResourceAttr("data.schemaregistry_schema.schemaWithReference", "references.#", "1"),
-					resource.TestCheckResourceAttr("data.schemaregistry_schema.schemaWithReference", "references.0.name", references[0].Name),
-					resource.TestCheckResourceAttr("data.schemaregistry_schema.schemaWithReference", "references.0.subject", references[0].Subject),
-					resource.TestCheckResourceAttr("data.schemaregistry_schema.schemaWithReference", "references.0.version", strconv.Itoa(references[0].Version)),
+					resource.TestCheckResourceAttr(dataSourceName, "references.#", "1"),
+					resource.TestCheckResourceAttr(dataSourceName, "references.0.name", references[0].Name),
+					resource.TestCheckResourceAttr(dataSourceName, "references.0.subject", references[0].Subject),
+					resource.TestCheckResourceAttr(dataSourceName, "references.0.version", strconv.Itoa(references[0].Version)),
 				),
 			},
 		},
@@ -110,6 +113,7 @@ func TestAccDataSourceSchemaReferences_basic(t *testing.T) {
 
 func TestAccDataSourceSchema_atVersion(t *testing.T) {
 	// GIVEN
+	dataSourceName := "data.schemaregistry_schema.schemaAtVersion"
 	url, found := os.LookupEnv("SCHEMA_REGISTRY_URL")
 	if !found {
 		t.Fatalf("SCHEMA_REGISTRY_URL must be set for acceptance tests")
@@ -133,11 +137,11 @@ func TestAccDataSourceSchema_atVersion(t *testing.T) {
 	referencedSchemaLatest := strings.Replace(fixtureAvro2, "\\", "", -1)
 
 	// AND
-	if _, err = client.CreateSchemaWithArbitrarySubject(referencedSchemaSubject, referencedSchema, srclient.Avro); err != nil {
+	if _, err = client.CreateSchema(referencedSchemaSubject, referencedSchema, srclient.Avro); err != nil {
 		t.Fatalf("could not create schema for subject: %s, err: %s", referencedSchema, err)
 	}
 
-	if _, err = client.CreateSchemaWithArbitrarySubject(referencedSchemaSubject, referencedSchemaLatest, srclient.Avro); err != nil {
+	if _, err = client.CreateSchema(referencedSchemaSubject, referencedSchemaLatest, srclient.Avro); err != nil {
 		t.Fatalf("could not create schema for subject: %s, err: %s", referencedSchema, err)
 	}
 
@@ -154,11 +158,11 @@ func TestAccDataSourceSchema_atVersion(t *testing.T) {
 					}
 				`, referencedSchemaSubject),
 				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr("data.schemaregistry_schema.schemaAtVersion", "id", referencedSchemaSubject),
-					resource.TestCheckResourceAttr("data.schemaregistry_schema.schemaAtVersion", "subject", referencedSchemaSubject),
-					resource.TestCheckResourceAttrSet("data.schemaregistry_schema.schemaAtVersion", "schema_id"),
-					resource.TestCheckResourceAttr("data.schemaregistry_schema.schemaAtVersion", "version", "1"),
-					resource.TestCheckResourceAttr("data.schemaregistry_schema.schemaAtVersion", "schema", referencedSchema),
+					resource.TestCheckResourceAttr(dataSourceName, "id", referencedSchemaSubject),
+					resource.TestCheckResourceAttr(dataSourceName, "subject", referencedSchemaSubject),
+					resource.TestCheckResourceAttrSet(dataSourceName, "schema_id"),
+					resource.TestCheckResourceAttr(dataSourceName, "version", "1"),
+					resource.TestCheckResourceAttr(dataSourceName, "schema", referencedSchema),
 				),
 			},
 		},

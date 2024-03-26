@@ -2,6 +2,7 @@ package schemaregistry
 
 import (
 	"context"
+	"log"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/customdiff"
@@ -148,6 +149,11 @@ func schemaRead(ctx context.Context, d *schema.ResourceData, meta interface{}) d
 
 	schema, err := client.GetLatestSchema(subject)
 	if err != nil {
+		if strings.Contains(err.Error(), "404") {
+			log.Printf("[WARN] Schema (%s) not found, removing from state", d.Id())
+			d.SetId("")
+			return nil
+		}
 		return diag.FromErr(err)
 	}
 
