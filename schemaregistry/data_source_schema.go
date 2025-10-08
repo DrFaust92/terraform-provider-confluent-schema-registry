@@ -81,9 +81,15 @@ func dataSourceSubjectRead(ctx context.Context, d *schema.ResourceData, m interf
 		return diag.FromErr(err)
 	}
 
-	d.Set("schema", schema.Schema())
-	d.Set("schema_id", schema.ID())
-	d.Set("version", schema.Version())
+	if err = d.Set("schema", schema.Schema()); err != nil {
+		return diag.FromErr(err)
+	}
+	if err = d.Set("schema_id", schema.ID()); err != nil {
+		return diag.FromErr(err)
+	}
+	if err = d.Set("version", schema.Version()); err != nil {
+		return diag.FromErr(err)
+	}
 
 	if err = d.Set("references", FromRegistryReferences(schema.References())); err != nil {
 		return diag.FromErr(err)

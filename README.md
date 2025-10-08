@@ -6,7 +6,7 @@ A terraform provider for managing schemas in a Confluent schema registry
 terraform {
     required_providers {
         schemaregistry = {
-            source = "arkiaconsulting/confluent-schema-registry"
+            source = "drfaust92/confluent-schema-registry"
         }
     }
 }
