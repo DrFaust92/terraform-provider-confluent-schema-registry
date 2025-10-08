@@ -2,8 +2,6 @@ module terraform-provider-schema-registry
 
 go 1.24.0
 
-toolchain go1.24.8
-
 require (
 	github.com/hashicorp/go-uuid v1.0.3
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.38.1
