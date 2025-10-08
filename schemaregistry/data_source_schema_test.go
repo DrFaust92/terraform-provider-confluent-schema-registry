@@ -31,7 +31,7 @@ func TestAccDataSourceSchema_basic(t *testing.T) {
 					resource.TestCheckResourceAttr(dataSourceName, "id", subject),
 					resource.TestCheckResourceAttr(dataSourceName, "subject", subject),
 					resource.TestCheckResourceAttr(dataSourceName, "version", "1"),
-					resource.TestCheckResourceAttr(dataSourceName, "schema", strings.Replace(fixtureAvro1, "\\", "", -1)),
+					resource.TestCheckResourceAttr(dataSourceName, "schema", strings.ReplaceAll(fixtureAvro1, "\\", "")),
 					resource.TestCheckResourceAttrSet(dataSourceName, "schema_id"),
 				),
 			},
@@ -61,7 +61,7 @@ func TestAccDataSourceSchemaReferences_basic(t *testing.T) {
 	}
 
 	referencedSchemaSubject := fmt.Sprintf("referencedSub-%s", u)
-	referencedSchema := strings.Replace(fixtureAvro1, "\\", "", -1)
+	referencedSchema := strings.ReplaceAll(fixtureAvro1, "\\", "")
 
 	schemaWithReferenceSubject := fmt.Sprintf("sub-%s", u)
 	schemaWithReference := `["akc.test.userAdded"]`
@@ -133,8 +133,8 @@ func TestAccDataSourceSchema_atVersion(t *testing.T) {
 	}
 
 	referencedSchemaSubject := fmt.Sprintf("referencedSub-%s", u)
-	referencedSchema := strings.Replace(fixtureAvro1, "\\", "", -1)
-	referencedSchemaLatest := strings.Replace(fixtureAvro2, "\\", "", -1)
+	referencedSchema := strings.ReplaceAll(fixtureAvro1, "\\", "")
+	referencedSchemaLatest := strings.ReplaceAll(fixtureAvro2, "\\", "")
 
 	// AND
 	if _, err = client.CreateSchema(referencedSchemaSubject, referencedSchema, srclient.Avro); err != nil {

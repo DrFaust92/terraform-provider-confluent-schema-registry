@@ -28,7 +28,7 @@ func TestAccResourceSchema_basic(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "subject", subject),
 					resource.TestCheckResourceAttrSet(resourceName, "schema_id"),
 					resource.TestCheckResourceAttr(resourceName, "version", "1"),
-					resource.TestCheckResourceAttr(resourceName, "schema", strings.Replace(fixtureAvro1, "\\", "", -1)),
+					resource.TestCheckResourceAttr(resourceName, "schema", strings.ReplaceAll(fixtureAvro1, "\\", "")),
 				),
 			},
 			{
@@ -59,7 +59,7 @@ func TestAccResourceSchema_updateCompatible(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "subject", subject),
 					resource.TestCheckResourceAttrSet(resourceName, "schema_id"),
 					resource.TestCheckResourceAttr(resourceName, "version", "1"),
-					resource.TestCheckResourceAttr(resourceName, "schema", strings.Replace(fixtureAvro1, "\\", "", -1)),
+					resource.TestCheckResourceAttr(resourceName, "schema", strings.ReplaceAll(fixtureAvro1, "\\", "")),
 				),
 			},
 			{
@@ -74,7 +74,7 @@ func TestAccResourceSchema_updateCompatible(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "subject", subject),
 					resource.TestCheckResourceAttrSet(resourceName, "schema_id"),
 					resource.TestCheckResourceAttr(resourceName, "version", "2"),
-					resource.TestCheckResourceAttr(resourceName, "schema", strings.Replace(fixtureAvro2, "\\", "", -1)),
+					resource.TestCheckResourceAttr(resourceName, "schema", strings.ReplaceAll(fixtureAvro2, "\\", "")),
 				),
 			},
 		},
@@ -100,7 +100,7 @@ func TestAccResourceSchema_updateIncompatible(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "subject", subject),
 					resource.TestCheckResourceAttrSet(resourceName, "schema_id"),
 					resource.TestCheckResourceAttr(resourceName, "version", "1"),
-					resource.TestCheckResourceAttr(resourceName, "schema", strings.Replace(fixtureAvro1, "\\", "", -1)),
+					resource.TestCheckResourceAttr(resourceName, "schema", strings.ReplaceAll(fixtureAvro1, "\\", "")),
 				),
 			},
 			{
@@ -150,13 +150,13 @@ func TestAccResourceSchemaReferences_basic(t *testing.T) {
 				resource.TestCheckResourceAttr("schemaregistry_schema.referencedSchema", "subject", fmt.Sprintf("referencedSub-%s", u)),
 				resource.TestCheckResourceAttrSet("schemaregistry_schema.referencedSchema", "schema_id"),
 				resource.TestCheckResourceAttr("schemaregistry_schema.referencedSchema", "version", "1"),
-				resource.TestCheckResourceAttr("schemaregistry_schema.referencedSchema", "schema", strings.Replace(fixtureAvro1, "\\", "", -1)),
+				resource.TestCheckResourceAttr("schemaregistry_schema.referencedSchema", "schema", strings.ReplaceAll(fixtureAvro1, "\\", "")),
 
 				resource.TestCheckResourceAttr("schemaregistry_schema.schemaWithReference", "id", fmt.Sprintf("sub%s", u)),
 				resource.TestCheckResourceAttr("schemaregistry_schema.schemaWithReference", "subject", fmt.Sprintf("sub%s", u)),
 				resource.TestCheckResourceAttrSet("schemaregistry_schema.schemaWithReference", "schema_id"),
 				resource.TestCheckResourceAttr("schemaregistry_schema.schemaWithReference", "version", "1"),
-				resource.TestCheckResourceAttr("schemaregistry_schema.schemaWithReference", "schema", strings.Replace(`[\"akc.test.userAdded\"]`, "\\", "", -1)),
+				resource.TestCheckResourceAttr("schemaregistry_schema.schemaWithReference", "schema", strings.ReplaceAll(`[\"akc.test.userAdded\"]`, "\\", "")),
 
 				resource.TestCheckResourceAttr("schemaregistry_schema.schemaWithReference", "reference.#", "1"),
 				resource.TestCheckResourceAttr("schemaregistry_schema.schemaWithReference", "reference.0.name", "akc.test.userAdded"),
@@ -202,19 +202,19 @@ func TestAccResourceSchemaReferences_basic(t *testing.T) {
 				resource.TestCheckResourceAttr("schemaregistry_schema.referencedSchema", "subject", fmt.Sprintf("referencedSub-%s", u)),
 				resource.TestCheckResourceAttrSet("schemaregistry_schema.referencedSchema", "schema_id"),
 				resource.TestCheckResourceAttr("schemaregistry_schema.referencedSchema", "version", "1"),
-				resource.TestCheckResourceAttr("schemaregistry_schema.referencedSchema", "schema", strings.Replace(fixtureAvro1, "\\", "", -1)),
+				resource.TestCheckResourceAttr("schemaregistry_schema.referencedSchema", "schema", strings.ReplaceAll(fixtureAvro1, "\\", "")),
 
 				resource.TestCheckResourceAttr("schemaregistry_schema.otherReferencedSchema", "id", fmt.Sprintf("otherReferencedSub-%s", u)),
 				resource.TestCheckResourceAttr("schemaregistry_schema.otherReferencedSchema", "subject", fmt.Sprintf("otherReferencedSub-%s", u)),
 				resource.TestCheckResourceAttrSet("schemaregistry_schema.otherReferencedSchema", "schema_id"),
 				resource.TestCheckResourceAttr("schemaregistry_schema.otherReferencedSchema", "version", "1"),
-				resource.TestCheckResourceAttr("schemaregistry_schema.otherReferencedSchema", "schema", strings.Replace(`{\"type\":\"record\",\"name\":\"other\",\"namespace\":\"foo.bar\",\"fields\":[{\"name\":\"foo\",\"type\":\"string\"}]}`, "\\", "", -1)),
+				resource.TestCheckResourceAttr("schemaregistry_schema.otherReferencedSchema", "schema", strings.ReplaceAll(`{\"type\":\"record\",\"name\":\"other\",\"namespace\":\"foo.bar\",\"fields\":[{\"name\":\"foo\",\"type\":\"string\"}]}`, "\\", "")),
 
 				resource.TestCheckResourceAttr("schemaregistry_schema.schemaWithReference", "id", fmt.Sprintf("sub%s", u)),
 				resource.TestCheckResourceAttr("schemaregistry_schema.schemaWithReference", "subject", fmt.Sprintf("sub%s", u)),
 				resource.TestCheckResourceAttrSet("schemaregistry_schema.schemaWithReference", "schema_id"),
 				resource.TestCheckResourceAttr("schemaregistry_schema.schemaWithReference", "version", "1"),
-				resource.TestCheckResourceAttr("schemaregistry_schema.schemaWithReference", "schema", strings.Replace(`[\"akc.test.userAdded\"]`, "\\", "", -1)),
+				resource.TestCheckResourceAttr("schemaregistry_schema.schemaWithReference", "schema", strings.ReplaceAll(`[\"akc.test.userAdded\"]`, "\\", "")),
 
 				resource.TestCheckResourceAttr("schemaregistry_schema.schemaWithReference", "reference.#", "2"),
 

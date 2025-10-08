@@ -102,9 +102,15 @@ func schemaCreate(ctx context.Context, d *schema.ResourceData, meta interface{})
 	}
 
 	d.SetId(formatSchemaVersionID(subject))
-	d.Set("schema_id", schema.ID())
-	d.Set("schema", schema.Schema())
-	d.Set("version", schema.Version())
+	if err = d.Set("schema_id", schema.ID()); err != nil {
+		return diag.FromErr(err)
+	}
+	if err = d.Set("schema", schema.Schema()); err != nil {
+		return diag.FromErr(err)
+	}
+	if err = d.Set("version", schema.Version()); err != nil {
+		return diag.FromErr(err)
+	}
 
 	if err = d.Set("reference", FromRegistryReferences(schema.References())); err != nil {
 		return diag.FromErr(err)
@@ -130,9 +136,15 @@ func schemaUpdate(ctx context.Context, d *schema.ResourceData, meta interface{})
 		return diag.FromErr(err)
 	}
 
-	d.Set("schema_id", schema.ID())
-	d.Set("schema", schema.Schema())
-	d.Set("version", schema.Version())
+	if err = d.Set("schema_id", schema.ID()); err != nil {
+		return diag.FromErr(err)
+	}
+	if err = d.Set("schema", schema.Schema()); err != nil {
+		return diag.FromErr(err)
+	}
+	if err = d.Set("version", schema.Version()); err != nil {
+		return diag.FromErr(err)
+	}
 
 	if err = d.Set("reference", FromRegistryReferences(schema.References())); err != nil {
 		return diag.FromErr(err)
@@ -157,10 +169,18 @@ func schemaRead(ctx context.Context, d *schema.ResourceData, meta interface{}) d
 		return diag.FromErr(err)
 	}
 
-	d.Set("schema", schema.Schema())
-	d.Set("schema_id", schema.ID())
-	d.Set("subject", subject)
-	d.Set("version", schema.Version())
+	if err = d.Set("schema", schema.Schema()); err != nil {
+		return diag.FromErr(err)
+	}
+	if err = d.Set("schema_id", schema.ID()); err != nil {
+		return diag.FromErr(err)
+	}
+	if err = d.Set("subject", subject); err != nil {
+		return diag.FromErr(err)
+	}
+	if err = d.Set("version", schema.Version()); err != nil {
+		return diag.FromErr(err)
+	}
 
 	if err = d.Set("reference", FromRegistryReferences(schema.References())); err != nil {
 		return diag.FromErr(err)
