@@ -77,7 +77,7 @@ The following arguments are supported in the `provider` block:
 
 **Note:** Only one authentication method can be configured at a time. Choose one of the following:
 
-#### Basic Authentication
+#### Basic Authentication (Provider Block)
 
 * `username` - (Optional) The username used to authenticate against the schema registry instance.
   You can also set this via the `SCHEMA_REGISTRY_USERNAME` environment variable.
@@ -90,7 +90,7 @@ The following arguments are supported in the `provider` block:
 * `bearer_token` - (Optional) A static bearer token used to authenticate against the schema registry instance.
   You can also set this via the `SCHEMA_REGISTRY_BEARER_TOKEN` environment variable.
 
-#### OAuth2 Client Credentials
+#### OAuth2 Client Credentials (Provider Block)
 
 * `oauth2` - (Optional) OAuth2 client credentials configuration block. Supports the following:
     * `token_url` - (Required) OAuth2 token endpoint URL.
