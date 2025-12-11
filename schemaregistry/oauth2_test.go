@@ -60,7 +60,9 @@ func TestOAuth2Client_GetToken_Success(t *testing.T) {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(response)
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			t.Fatalf("Failed to encode response: %v", err)
+		}
 	}))
 	defer mockServer.Close()
 
@@ -95,7 +97,9 @@ func TestOAuth2Client_GetToken_InvalidCredentials(t *testing.T) {
 			"error":             "invalid_client",
 			"error_description": "Client authentication failed",
 		}
-		json.NewEncoder(w).Encode(response)
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			t.Fatalf("Failed to encode response: %v", err)
+		}
 	}))
 	defer mockServer.Close()
 
@@ -145,7 +149,9 @@ func TestGetToken_ParseConfig(t *testing.T) {
 			"expires_in":   3600,
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(response)
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			t.Fatalf("Failed to encode response: %v", err)
+		}
 	}))
 	defer mockServer.Close()
 
@@ -177,7 +183,9 @@ func TestGetToken_WithoutScopes(t *testing.T) {
 			"expires_in":   3600,
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(response)
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			t.Fatalf("Failed to encode response: %v", err)
+		}
 	}))
 	defer mockServer.Close()
 
@@ -209,7 +217,9 @@ func TestGetToken_ExpiredToken(t *testing.T) {
 			"expires_in":   1, // 1 second
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(response)
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			t.Fatalf("Failed to encode response: %v", err)
+		}
 	}))
 	defer mockServer.Close()
 
@@ -254,7 +264,9 @@ func TestOAuth2Client_GetToken_WithCustomScopes(t *testing.T) {
 			"expires_in":   3600,
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(response)
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			t.Fatalf("Failed to encode response: %v", err)
+		}
 	}))
 	defer mockServer.Close()
 

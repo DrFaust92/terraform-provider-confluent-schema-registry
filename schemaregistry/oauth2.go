@@ -3,7 +3,6 @@ package schemaregistry
 import (
 	"context"
 	"net/http"
-	"sync"
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/clientcredentials"
@@ -19,8 +18,6 @@ type OAuth2Config struct {
 type OAuth2Client struct {
 	config     *OAuth2Config
 	httpClient *http.Client
-	token      *oauth2.Token
-	mutex      sync.RWMutex
 }
 
 func NewOAuth2Client(config *OAuth2Config) *OAuth2Client {
