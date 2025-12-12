@@ -42,12 +42,14 @@ func testAccPreCheck(t *testing.T) {
 		t.Fatal("SCHEMA_REGISTRY_URL must be set for acceptance tests")
 	}
 
-	if v := os.Getenv("SCHEMA_REGISTRY_USERNAME"); v == "" {
-		t.Fatal("SCHEMA_REGISTRY_USERNAME must be set for acceptance tests")
-	}
+	hasBasicAuth := os.Getenv("SCHEMA_REGISTRY_USERNAME") != "" && os.Getenv("SCHEMA_REGISTRY_PASSWORD") != ""
+	hasBearerToken := os.Getenv("SCHEMA_REGISTRY_BEARER_TOKEN") != ""
+	hasOAuth2 := os.Getenv("SCHEMA_REGISTRY_OAUTH2_TOKEN_URL") != "" &&
+		os.Getenv("SCHEMA_REGISTRY_OAUTH2_CLIENT_ID") != "" &&
+		os.Getenv("SCHEMA_REGISTRY_OAUTH2_CLIENT_SECRET") != ""
 
-	if v := os.Getenv("SCHEMA_REGISTRY_PASSWORD"); v == "" {
-		t.Fatal("SCHEMA_REGISTRY_PASSWORD must be set for acceptance tests")
+	if !hasBasicAuth && !hasBearerToken && !hasOAuth2 {
+		t.Fatal("Either SCHEMA_REGISTRY_USERNAME and SCHEMA_REGISTRY_PASSWORD, or SCHEMA_REGISTRY_BEARER_TOKEN, or SCHEMA_REGISTRY_OAUTH2_TOKEN_URL/CLIENT_ID/CLIENT_SECRET must be set for acceptance tests")
 	}
 }
 
@@ -58,15 +60,11 @@ func TestProviderConfigure_OAuth2(t *testing.T) {
 
 	// Create a mock resource data with OAuth2 config
 	resourceData := schema.TestResourceDataRaw(t, provider.Schema, map[string]interface{}{
-		"schema_registry_url": "https://test-registry.example.com",
-		"oauth2": []interface{}{
-			map[string]interface{}{
-				"token_url":     "https://auth.example.com/token",
-				"client_id":     "test-client-id",
-				"client_secret": "test-client-secret",
-				"scopes":        []interface{}{"scope1", "scope2"},
-			},
-		},
+		"schema_registry_url":  "https://test-registry.example.com",
+		"oauth2_token_url":     "https://auth.example.com/token",
+		"oauth2_client_id":     "test-client-id",
+		"oauth2_client_secret": "test-client-secret",
+		"oauth2_scopes":        []interface{}{"scope1", "scope2"},
 	})
 
 	// Test that the provider can parse OAuth2 config
@@ -84,8 +82,13 @@ func TestProviderConfigure_BearerToken(t *testing.T) {
 	provider := Provider()
 
 	resourceData := schema.TestResourceDataRaw(t, provider.Schema, map[string]interface{}{
-		"schema_registry_url": "https://test-registry.example.com",
-		"bearer_token":        "test-bearer-token-123",
+		"schema_registry_url":  "https://test-registry.example.com",
+		"bearer_token":         "test-bearer-token-123",
+		"username":             "",
+		"password":             "",
+		"oauth2_token_url":     "",
+		"oauth2_client_id":     "",
+		"oauth2_client_secret": "",
 	})
 
 	client, diags := providerConfigure(context.TODO(), resourceData)
@@ -116,30 +119,22 @@ func TestProviderConfigure_ConflictingAuth(t *testing.T) {
 		{
 			name: "BasicAuth and OAuth2",
 			config: map[string]interface{}{
-				"schema_registry_url": "https://test-registry.example.com",
-				"username":            "user",
-				"password":            "pass",
-				"oauth2": []interface{}{
-					map[string]interface{}{
-						"token_url":     "https://auth.example.com/token",
-						"client_id":     "client-id",
-						"client_secret": "client-secret",
-					},
-				},
+				"schema_registry_url":  "https://test-registry.example.com",
+				"username":             "user",
+				"password":             "pass",
+				"oauth2_token_url":     "https://auth.example.com/token",
+				"oauth2_client_id":     "client-id",
+				"oauth2_client_secret": "client-secret",
 			},
 		},
 		{
 			name: "BearerToken and OAuth2",
 			config: map[string]interface{}{
-				"schema_registry_url": "https://test-registry.example.com",
-				"bearer_token":        "token",
-				"oauth2": []interface{}{
-					map[string]interface{}{
-						"token_url":     "https://auth.example.com/token",
-						"client_id":     "client-id",
-						"client_secret": "client-secret",
-					},
-				},
+				"schema_registry_url":  "https://test-registry.example.com",
+				"bearer_token":         "token",
+				"oauth2_token_url":     "https://auth.example.com/token",
+				"oauth2_client_id":     "client-id",
+				"oauth2_client_secret": "client-secret",
 			},
 		},
 	}

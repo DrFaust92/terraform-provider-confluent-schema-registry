@@ -155,15 +155,13 @@ func TestGetToken_ParseConfig(t *testing.T) {
 	}))
 	defer mockServer.Close()
 
-	// Simulate Terraform schema data structure
-	oauth2Config := map[string]interface{}{
-		"token_url":     mockServer.URL + "/token",
-		"client_id":     "test-client-id",
-		"client_secret": "test-client-secret",
-		"scopes":        []interface{}{"scope1", "scope2"},
-	}
+	// Test with individual parameters
+	tokenURL := mockServer.URL + "/token"
+	clientID := "test-client-id"
+	clientSecret := "test-client-secret"
+	scopes := []string{"scope1", "scope2"}
 
-	token, err := getToken(oauth2Config)
+	token, err := getToken(tokenURL, clientID, clientSecret, scopes)
 
 	if err != nil {
 		t.Fatalf("Expected no error, got: %v", err)
@@ -189,14 +187,13 @@ func TestGetToken_WithoutScopes(t *testing.T) {
 	}))
 	defer mockServer.Close()
 
-	// Config without scopes
-	oauth2Config := map[string]interface{}{
-		"token_url":     mockServer.URL + "/token",
-		"client_id":     "test-client-id",
-		"client_secret": "test-client-secret",
-	}
+	// Test without scopes
+	tokenURL := mockServer.URL + "/token"
+	clientID := "test-client-id"
+	clientSecret := "test-client-secret"
+	var scopes []string // nil/empty scopes
 
-	token, err := getToken(oauth2Config)
+	token, err := getToken(tokenURL, clientID, clientSecret, scopes)
 
 	if err != nil {
 		t.Fatalf("Expected no error, got: %v", err)
@@ -223,13 +220,12 @@ func TestGetToken_ExpiredToken(t *testing.T) {
 	}))
 	defer mockServer.Close()
 
-	oauth2Config := map[string]interface{}{
-		"token_url":     mockServer.URL + "/token",
-		"client_id":     "test-client-id",
-		"client_secret": "test-client-secret",
-	}
+	tokenURL := mockServer.URL + "/token"
+	clientID := "test-client-id"
+	clientSecret := "test-client-secret"
+	var scopes []string
 
-	token, err := getToken(oauth2Config)
+	token, err := getToken(tokenURL, clientID, clientSecret, scopes)
 
 	if err != nil {
 		t.Fatalf("Expected no error, got: %v", err)

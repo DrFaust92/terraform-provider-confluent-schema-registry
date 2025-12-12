@@ -36,13 +36,9 @@ resource "schemaregistry_schema" "schema" {
 # Configure the Schema Registry Provider with OAuth2
 provider "schemaregistry" {
   schema_registry_url = "https://my.cool.registry"
-
-  oauth2 {
-    token_url     = "https://auth.example.com/oauth2/token"
-    client_id     = "your-client-id"
-    client_secret = "your-client-secret"
-    scopes        = ["schema-registry"]
-  }
+  oauth2_token_url = "https://auth-server.com/token"
+  oauth2_client_id = "client_id"
+  oauth2_client_secret = "client_secret"
 }
 
 resource "schemaregistry_schema" "schema" {
@@ -90,16 +86,16 @@ The following arguments are supported in the `provider` block:
 * `bearer_token` - (Optional) A static bearer token used to authenticate against the schema registry instance.
   You can also set this via the `SCHEMA_REGISTRY_BEARER_TOKEN` environment variable.
 
-#### OAuth2 Client Credentials (Provider Block)
+#### OAuth2 Client Credentials
 
-* `oauth2` - (Optional) OAuth2 client credentials configuration block. Supports the following:
-    * `token_url` - (Required) OAuth2 token endpoint URL.
-      You can also set this via the `SCHEMA_REGISTRY_OAUTH2_TOKEN_URL` environment variable.
-    * `client_id` - (Required) OAuth2 client ID.
-      You can also set this via the `SCHEMA_REGISTRY_OAUTH2_CLIENT_ID` environment variable.
-    * `client_secret` - (Required) OAuth2 client secret.
-      You can also set this via the `SCHEMA_REGISTRY_OAUTH2_CLIENT_SECRET` environment variable.
-    * `scopes` - (Optional) List of OAuth2 scopes to request.
+* `oauth2_token_url` - (Optional) OAuth2 token endpoint URL.
+   You can also set this via the `SCHEMA_REGISTRY_OAUTH2_TOKEN_URL` environment variable.
+* `oauth2_client_id` - (Optional) OAuth2 client ID.
+   You can also set this via the `SCHEMA_REGISTRY_OAUTH2_CLIENT_ID` environment variable.
+* `oauth2_client_secret` - (Optional) OAuth2 client secret
+   You can also set this via the `SCHEMA_REGISTRY_OAUTH2_CLIENT_SECRET` environment variable.
+* `oauth2_scopes` - (Optional) List of OAuth2 scopes to request.
+
 
 ## Environment Variables
 

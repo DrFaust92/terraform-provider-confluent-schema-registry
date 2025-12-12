@@ -35,39 +35,30 @@ func Provider() *schema.Provider {
 				Description: "Static bearer token for authentication",
 				DefaultFunc: schema.EnvDefaultFunc("SCHEMA_REGISTRY_BEARER_TOKEN", nil),
 			},
-			"oauth2": {
-				Type:     schema.TypeList,
-				Optional: true,
-				MaxItems: 1,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"token_url": {
-							Type:        schema.TypeString,
-							Required:    true,
-							Description: "OAuth2 token endpoint URL",
-							DefaultFunc: schema.EnvDefaultFunc("SCHEMA_REGISTRY_OAUTH2_TOKEN_URL", nil),
-						},
-						"client_id": {
-							Type:        schema.TypeString,
-							Required:    true,
-							Description: "OAuth2 client ID",
-							DefaultFunc: schema.EnvDefaultFunc("SCHEMA_REGISTRY_OAUTH2_CLIENT_ID", nil),
-						},
-						"client_secret": {
-							Type:        schema.TypeString,
-							Required:    true,
-							Sensitive:   true,
-							Description: "OAuth2 client secret",
-							DefaultFunc: schema.EnvDefaultFunc("SCHEMA_REGISTRY_OAUTH2_CLIENT_SECRET", nil),
-						},
-						"scopes": {
-							Type:        schema.TypeList,
-							Optional:    true,
-							Description: "OAuth2 scopes to request",
-							Elem:        &schema.Schema{Type: schema.TypeString},
-						},
-					},
-				},
+			"oauth2_token_url": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Description: "OAuth2 token endpoint URL",
+				DefaultFunc: schema.EnvDefaultFunc("SCHEMA_REGISTRY_OAUTH2_TOKEN_URL", nil),
+			},
+			"oauth2_client_id": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Description: "OAuth2 client ID",
+				DefaultFunc: schema.EnvDefaultFunc("SCHEMA_REGISTRY_OAUTH2_CLIENT_ID", nil),
+			},
+			"oauth2_client_secret": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Sensitive:   true,
+				Description: "OAuth2 client secret",
+				DefaultFunc: schema.EnvDefaultFunc("SCHEMA_REGISTRY_OAUTH2_CLIENT_SECRET", nil),
+			},
+			"oauth2_scopes": {
+				Type:        schema.TypeList,
+				Optional:    true,
+				Description: "OAuth2 scopes to request",
+				Elem:        &schema.Schema{Type: schema.TypeString},
 			},
 		},
 		ResourcesMap: map[string]*schema.Resource{
@@ -85,7 +76,9 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 	username := d.Get("username").(string)
 	password := d.Get("password").(string)
 	bearerToken := d.Get("bearer_token").(string)
-	oauth2List := d.Get("oauth2").([]interface{})
+	oauth2TokenURL := d.Get("oauth2_token_url").(string)
+	oauth2ClientID := d.Get("oauth2_client_id").(string)
+	oauth2ClientSecret := d.Get("oauth2_client_secret").(string)
 
 	// Validate that only one auth method is used
 	authMethods := 0
@@ -95,7 +88,8 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 	if bearerToken != "" {
 		authMethods++
 	}
-	if len(oauth2List) > 0 {
+	hasOAuth2 := oauth2TokenURL != "" && oauth2ClientID != "" && oauth2ClientSecret != ""
+	if hasOAuth2 {
 		authMethods++
 	}
 	if authMethods > 1 {
@@ -113,10 +107,18 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 		if bearerToken != "" {
 			client.SetBearerToken(bearerToken)
 		}
-		if len(oauth2List) > 0 {
-			oauth2Map := oauth2List[0].(map[string]interface{})
+		if hasOAuth2 {
+			// Parse scopes (optional)
+			var scopes []string
+			if scopesInterface := d.Get("oauth2_scopes"); scopesInterface != nil {
+				scopesList := scopesInterface.([]interface{})
+				scopes = make([]string, len(scopesList))
+				for i, scope := range scopesList {
+					scopes[i] = scope.(string)
+				}
+			}
 
-			token, err := getToken(oauth2Map)
+			token, err := getToken(oauth2TokenURL, oauth2ClientID, oauth2ClientSecret, scopes)
 			if err != nil {
 				return nil, diag.FromErr(err)
 			}
@@ -129,22 +131,7 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 	return nil, diag.FromErr(errors.New("invalid credential parameters"))
 }
 
-func getToken(oauth2Config map[string]interface{}) (string, error) {
-	// Parse OAuth2 configuration
-	tokenURL := oauth2Config["token_url"].(string)
-	clientID := oauth2Config["client_id"].(string)
-	clientSecret := oauth2Config["client_secret"].(string)
-
-	// Parse scopes (optional)
-	var scopes []string
-	if scopesInterface, ok := oauth2Config["scopes"]; ok && scopesInterface != nil {
-		scopesList := scopesInterface.([]interface{})
-		scopes = make([]string, len(scopesList))
-		for i, scope := range scopesList {
-			scopes[i] = scope.(string)
-		}
-	}
-
+func getToken(tokenURL, clientID, clientSecret string, scopes []string) (string, error) {
 	// Create OAuth2 client and get token
 	config := &OAuth2Config{
 		TokenURL:     tokenURL,

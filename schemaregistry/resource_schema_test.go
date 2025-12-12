@@ -283,7 +283,7 @@ func TestAccResourceSchemaReferences_validateSchema(t *testing.T) {
 						},
 					},
 				}),
-				ExpectError: regexp.MustCompile(regexp.QuoteMeta(`Invalid schema ["invalid.schema"] with refs`)),
+				ExpectError: regexp.MustCompile(`Undefined name: \\"invalid\.schema\\"`),
 			},
 		},
 	})
@@ -440,7 +440,7 @@ func TestAccResourceSchemaReferences_updateIncompatible(t *testing.T) {
 						},
 					},
 				}),
-				ExpectError: regexp.MustCompile(regexp.QuoteMeta(`Invalid schema ["akc.test.incompatible"] with refs`)),
+				ExpectError: regexp.MustCompile(`invalid \"schema\": incompatible`),
 			},
 		},
 	})

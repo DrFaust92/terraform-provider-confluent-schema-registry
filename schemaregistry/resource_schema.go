@@ -130,7 +130,9 @@ func schemaUpdate(ctx context.Context, d *schema.ResourceData, meta interface{})
 
 	schema, err := client.CreateSchema(subject, schemaString, srclient.Avro, references...)
 	if err != nil {
-		if strings.Contains(err.Error(), "409") {
+		// 42201 is schema incompatible error code from Confluent Schema Registry
+		// https://docs.confluent.io/platform/current/schema-registry/develop/api.html#post--subjects-(string-%20subject)-versions
+		if strings.Contains(err.Error(), "409") || strings.Contains(err.Error(), "42201") {
 			return diag.Errorf(`invalid "schema": incompatible`)
 		}
 		return diag.FromErr(err)
@@ -195,7 +197,12 @@ func schemaDelete(ctx context.Context, d *schema.ResourceData, meta interface{})
 	client := meta.(*srclient.SchemaRegistryClient)
 	subject := extractSchemaVersionID(d.Id())
 
-	err := client.DeleteSubject(subject, true)
+	// since 0.7.4 we need to first soft delete the schema and then hard delete it
+	err := client.DeleteSubject(subject, false)
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	err = client.DeleteSubject(subject, true)
 	if err != nil {
 		return diag.FromErr(err)
 	}
