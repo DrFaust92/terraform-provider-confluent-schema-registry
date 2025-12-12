@@ -2,7 +2,10 @@
 A terraform provider for managing schemas in a Confluent schema registry
 
 ## Provider configuration
-```
+
+### Basic Authentication
+
+```hcl
 terraform {
     required_providers {
         schemaregistry = {
@@ -17,7 +20,53 @@ provider "schemaregistry" {
     password            = "<confluent_schema_registry_password>"
 }
 ```
-_You can omit the credential details by defining the environment variables `SCHEMA_REGISTRY_URL`, `SCHEMA_REGISTRY_USERNAME`, `SCHEMA_REGISTRY_PASSWORD`_
+
+### OAuth2 Client Credentials
+
+```hcl
+provider "schemaregistry" {
+    schema_registry_url = "https://xxxxxx.confluent.cloud"
+    oauth2_token_url = "https://auth-server.com/token"
+    oauth2_client_id = "client_id"
+    oauth2_client_secret = "client_secret"
+}
+```
+
+### Static Bearer Token
+
+```hcl
+provider "schemaregistry" {
+    schema_registry_url = "https://xxxxxx.confluent.cloud"
+    bearer_token        = "<your_bearer_token>"
+}
+```
+
+### Environment Variables
+
+You can omit the credential details by defining environment variables:
+
+**Basic Authentication:**
+```bash
+export SCHEMA_REGISTRY_URL="https://xxxxxx.confluent.cloud"
+export SCHEMA_REGISTRY_USERNAME="<confluent_schema_registry_key>"
+export SCHEMA_REGISTRY_PASSWORD="<confluent_schema_registry_password>"
+```
+
+**OAuth2 Authentication:**
+```bash
+export SCHEMA_REGISTRY_URL="https://xxxxxx.confluent.cloud"
+export SCHEMA_REGISTRY_OAUTH2_TOKEN_URL="https://auth.example.com/oauth2/token"
+export SCHEMA_REGISTRY_OAUTH2_CLIENT_ID="<oauth2_client_id>"
+export SCHEMA_REGISTRY_OAUTH2_CLIENT_SECRET="<oauth2_client_secret>"
+```
+
+**Bearer Token Authentication:**
+```bash
+export SCHEMA_REGISTRY_URL="https://xxxxxx.confluent.cloud"
+export SCHEMA_REGISTRY_BEARER_TOKEN="<your_bearer_token>"
+```
+
+**Note:** Only one authentication method can be configured at a time.
 
 ## The schema resource
 ```
@@ -54,14 +103,14 @@ resource "schemaregistry_schema" "with_reference" {
   reference {
     name = "akc.test.event"
     subject = schemaregistry_schema.referenced_event.subject
-    // version will always be upgraded with the referenced event schema version  
+    // version will always be upgraded with the referenced event schema version
     version = schemaregistry_schema.referenced_event.version
   }
 
   reference {
     name = "akc.test.other_event"
     subject = schemaregistry_schema.user_added.subject
-    // version will always be upgraded with the referenced event schema version  
+    // version will always be upgraded with the referenced event schema version
     version = schemaregistry_schema.referenced_event.version
   }
 }

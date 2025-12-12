@@ -46,12 +46,36 @@ func TestAccDataSourceSchemaReferences_basic(t *testing.T) {
 	if !found {
 		t.Fatalf("SCHEMA_REGISTRY_URL must be set for acceptance tests")
 	}
-	username := os.Getenv("SCHEMA_REGISTRY_USERNAME")
-	password := os.Getenv("SCHEMA_REGISTRY_PASSWORD")
+	hasBasicAuth := os.Getenv("SCHEMA_REGISTRY_USERNAME") != "" && os.Getenv("SCHEMA_REGISTRY_PASSWORD") != ""
+	hasBearerToken := os.Getenv("SCHEMA_REGISTRY_BEARER_TOKEN") != ""
+	hasOAuth2 := os.Getenv("SCHEMA_REGISTRY_OAUTH2_TOKEN_URL") != "" &&
+		os.Getenv("SCHEMA_REGISTRY_OAUTH2_CLIENT_ID") != "" &&
+		os.Getenv("SCHEMA_REGISTRY_OAUTH2_CLIENT_SECRET") != ""
+
+	if !hasBasicAuth && !hasBearerToken && !hasOAuth2 {
+		t.Fatal("Either SCHEMA_REGISTRY_USERNAME and SCHEMA_REGISTRY_PASSWORD, or SCHEMA_REGISTRY_BEARER_TOKEN, or SCHEMA_REGISTRY_OAUTH2_TOKEN_URL/CLIENT_ID/CLIENT_SECRET must be set for acceptance tests")
+	}
 
 	client := srclient.CreateSchemaRegistryClient(url)
-	if (username != "") && (password != "") {
+	if hasBasicAuth {
+		username := os.Getenv("SCHEMA_REGISTRY_USERNAME")
+		password :=  os.Getenv("SCHEMA_REGISTRY_PASSWORD")
 		client.SetCredentials(username, password)
+	}
+	if hasBearerToken {
+		token := os.Getenv("SCHEMA_REGISTRY_BEARER_TOKEN")
+		client.SetBearerToken(token)
+	}
+	if hasOAuth2 {
+		tokenURL := os.Getenv("SCHEMA_REGISTRY_OAUTH2_TOKEN_URL")
+		clientID := os.Getenv("SCHEMA_REGISTRY_OAUTH2_CLIENT_ID")
+		clientSecret := os.Getenv("SCHEMA_REGISTRY_OAUTH2_CLIENT_SECRET")
+
+		token, err := getToken(tokenURL, clientID, clientSecret, nil)
+		if err != nil {
+			t.Fatalf("Failed to get OAuth2 token: %s", err)
+		}
+		client.SetBearerToken(token)
 	}
 
 	// AND
@@ -118,12 +142,36 @@ func TestAccDataSourceSchema_atVersion(t *testing.T) {
 	if !found {
 		t.Fatalf("SCHEMA_REGISTRY_URL must be set for acceptance tests")
 	}
-	username := os.Getenv("SCHEMA_REGISTRY_USERNAME")
-	password := os.Getenv("SCHEMA_REGISTRY_PASSWORD")
+	hasBasicAuth := os.Getenv("SCHEMA_REGISTRY_USERNAME") != "" && os.Getenv("SCHEMA_REGISTRY_PASSWORD") != ""
+	hasBearerToken := os.Getenv("SCHEMA_REGISTRY_BEARER_TOKEN") != ""
+	hasOAuth2 := os.Getenv("SCHEMA_REGISTRY_OAUTH2_TOKEN_URL") != "" &&
+		os.Getenv("SCHEMA_REGISTRY_OAUTH2_CLIENT_ID") != "" &&
+		os.Getenv("SCHEMA_REGISTRY_OAUTH2_CLIENT_SECRET") != ""
+
+	if !hasBasicAuth && !hasBearerToken && !hasOAuth2 {
+		t.Fatal("Either SCHEMA_REGISTRY_USERNAME and SCHEMA_REGISTRY_PASSWORD, or SCHEMA_REGISTRY_BEARER_TOKEN, or SCHEMA_REGISTRY_OAUTH2_TOKEN_URL/CLIENT_ID/CLIENT_SECRET must be set for acceptance tests")
+	}
 
 	client := srclient.CreateSchemaRegistryClient(url)
-	if (username != "") && (password != "") {
+	if hasBasicAuth {
+		username := os.Getenv("SCHEMA_REGISTRY_USERNAME")
+		password :=  os.Getenv("SCHEMA_REGISTRY_PASSWORD")
 		client.SetCredentials(username, password)
+	}
+	if hasBearerToken {
+		token := os.Getenv("SCHEMA_REGISTRY_BEARER_TOKEN")
+		client.SetBearerToken(token)
+	}
+	if hasOAuth2 {
+		tokenURL := os.Getenv("SCHEMA_REGISTRY_OAUTH2_TOKEN_URL")
+		clientID := os.Getenv("SCHEMA_REGISTRY_OAUTH2_CLIENT_ID")
+		clientSecret := os.Getenv("SCHEMA_REGISTRY_OAUTH2_CLIENT_SECRET")
+
+		token, err := getToken(tokenURL, clientID, clientSecret, nil)
+		if err != nil {
+			t.Fatalf("Failed to get OAuth2 token: %s", err)
+		}
+		client.SetBearerToken(token)
 	}
 
 	// AND
