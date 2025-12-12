@@ -26,13 +26,9 @@ provider "schemaregistry" {
 ```hcl
 provider "schemaregistry" {
     schema_registry_url = "https://xxxxxx.confluent.cloud"
-
-    oauth2 {
-        token_url     = "https://auth.example.com/oauth2/token"
-        client_id     = "<oauth2_client_id>"
-        client_secret = "<oauth2_client_secret>"
-        scopes        = ["schema-registry"]
-    }
+    oauth2_token_url = "https://auth-server.com/token"
+    oauth2_client_id = "client_id"
+    oauth2_client_secret = "client_secret"
 }
 ```
 
@@ -107,14 +103,14 @@ resource "schemaregistry_schema" "with_reference" {
   reference {
     name = "akc.test.event"
     subject = schemaregistry_schema.referenced_event.subject
-    // version will always be upgraded with the referenced event schema version  
+    // version will always be upgraded with the referenced event schema version
     version = schemaregistry_schema.referenced_event.version
   }
 
   reference {
     name = "akc.test.other_event"
     subject = schemaregistry_schema.user_added.subject
-    // version will always be upgraded with the referenced event schema version  
+    // version will always be upgraded with the referenced event schema version
     version = schemaregistry_schema.referenced_event.version
   }
 }
