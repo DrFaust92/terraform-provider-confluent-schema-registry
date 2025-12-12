@@ -86,7 +86,7 @@ The following arguments are supported in the `provider` block:
 * `bearer_token` - (Optional) A static bearer token used to authenticate against the schema registry instance.
   You can also set this via the `SCHEMA_REGISTRY_BEARER_TOKEN` environment variable.
 
-#### OAuth2 Client Credentials
+#### OAuth2 Authentication
 
 * `oauth2_token_url` - (Optional) OAuth2 token endpoint URL.
    You can also set this via the `SCHEMA_REGISTRY_OAUTH2_TOKEN_URL` environment variable.
@@ -95,7 +95,6 @@ The following arguments are supported in the `provider` block:
 * `oauth2_client_secret` - (Optional) OAuth2 client secret
    You can also set this via the `SCHEMA_REGISTRY_OAUTH2_CLIENT_SECRET` environment variable.
 * `oauth2_scopes` - (Optional) List of OAuth2 scopes to request.
-
 
 ## Environment Variables
 
