@@ -31,3 +31,4 @@ The following arguments are supported:
 * `schema_id` - The ID of the schema.
 * `references` - The schema references.
 * `schema` - The schema string.
+* `compatibility` - The compatibility level of the schema.
