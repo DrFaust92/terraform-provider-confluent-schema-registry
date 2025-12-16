@@ -26,7 +26,7 @@ The following arguments are supported:
 * `subject` - (Required) The subject related to the schema.
 * `schema` - (Required) The schema string.
 * `reference` - (Optional) The referenced schema list.
-* `compatibility` - (Optional) the compatibility level of the schema.
+* `compatibility` - (Optional) the compatibility level of the schema, if not provided the schema gets the server's global compatibility level.
 
 ## Attributes Reference
 
