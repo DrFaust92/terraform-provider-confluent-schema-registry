@@ -32,6 +32,11 @@ func dataSourceSchema() *schema.Resource {
 				Computed:    true,
 				Description: "The schema string",
 			},
+			"compatibility": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Description: "The compatibility level of the subject",
+			},
 			"references": {
 				Type:        schema.TypeList,
 				Computed:    true,
@@ -65,6 +70,7 @@ func dataSourceSubjectRead(ctx context.Context, d *schema.ResourceData, m interf
 
 	subject := d.Get("subject").(string)
 	version := d.Get("version").(int)
+	compatibility := d.Get("compatibility").(string)
 
 	client := m.(*srclient.SchemaRegistryClient)
 	var schema *srclient.Schema
@@ -94,7 +100,9 @@ func dataSourceSubjectRead(ctx context.Context, d *schema.ResourceData, m interf
 	if err = d.Set("references", FromRegistryReferences(schema.References())); err != nil {
 		return diag.FromErr(err)
 	}
-
+	if err := d.Set("compatibility", compatibility); err != nil {
+		return diag.FromErr(err)
+	}
 	d.SetId(formatSchemaVersionID(subject))
 
 	return diags

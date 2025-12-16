@@ -59,6 +59,12 @@ func resourceSchema() *schema.Resource {
 				Computed:    true,
 				Description: "The schema version",
 			},
+			"compatibility": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Computed:    true,
+				Description: "The compatibility level of the subject",
+			},
 			"reference": {
 				Type:        schema.TypeList,
 				Optional:    true,
@@ -101,6 +107,14 @@ func schemaCreate(ctx context.Context, d *schema.ResourceData, meta interface{})
 		return diag.FromErr(err)
 	}
 
+	// Set compatibility level if user provided one
+	if compatibility, ok := d.GetOk("compatibility"); ok {
+		_, err = client.ChangeSubjectCompatibilityLevel(subject, srclient.CompatibilityLevel(compatibility.(string)))
+		if err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
 	d.SetId(formatSchemaVersionID(subject))
 	if err = d.Set("schema_id", schema.ID()); err != nil {
 		return diag.FromErr(err)
@@ -113,6 +127,15 @@ func schemaCreate(ctx context.Context, d *schema.ResourceData, meta interface{})
 	}
 
 	if err = d.Set("reference", FromRegistryReferences(schema.References())); err != nil {
+		return diag.FromErr(err)
+	}
+
+	// Fetch and set the effective compatibility level (either user-set or global default)
+	effectiveCompatibility, err := client.GetCompatibilityLevel(subject, true)
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	if err = d.Set("compatibility", effectiveCompatibility); err != nil {
 		return diag.FromErr(err)
 	}
 
@@ -138,6 +161,16 @@ func schemaUpdate(ctx context.Context, d *schema.ResourceData, meta interface{})
 		return diag.FromErr(err)
 	}
 
+	// Update compatibility level if it was changed
+	if d.HasChange("compatibility") {
+		if compatibility, ok := d.GetOk("compatibility"); ok {
+			_, err = client.ChangeSubjectCompatibilityLevel(subject, srclient.CompatibilityLevel(compatibility.(string)))
+			if err != nil {
+				return diag.FromErr(err)
+			}
+		}
+	}
+
 	if err = d.Set("schema_id", schema.ID()); err != nil {
 		return diag.FromErr(err)
 	}
@@ -149,6 +182,15 @@ func schemaUpdate(ctx context.Context, d *schema.ResourceData, meta interface{})
 	}
 
 	if err = d.Set("reference", FromRegistryReferences(schema.References())); err != nil {
+		return diag.FromErr(err)
+	}
+
+	// Fetch and set the effective compatibility level
+	effectiveCompatibility, err := client.GetCompatibilityLevel(subject, true)
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	if err = d.Set("compatibility", effectiveCompatibility); err != nil {
 		return diag.FromErr(err)
 	}
 
@@ -170,7 +212,10 @@ func schemaRead(ctx context.Context, d *schema.ResourceData, meta interface{}) d
 		}
 		return diag.FromErr(err)
 	}
-
+	compatibility, err := client.GetCompatibilityLevel(subject, true)
+	if err != nil {
+		return diag.FromErr(err)
+	}
 	if err = d.Set("schema", schema.Schema()); err != nil {
 		return diag.FromErr(err)
 	}
@@ -185,6 +230,9 @@ func schemaRead(ctx context.Context, d *schema.ResourceData, meta interface{}) d
 	}
 
 	if err = d.Set("reference", FromRegistryReferences(schema.References())); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("compatibility", compatibility); err != nil {
 		return diag.FromErr(err)
 	}
 
