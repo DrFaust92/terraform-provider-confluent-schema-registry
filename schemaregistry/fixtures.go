@@ -17,14 +17,35 @@ const fixtureCreateSchema = `
 	}
 `
 
+const fixtureCreateSchemaWithCompatibility = `
+	resource "schemaregistry_schema" "test" {
+		subject = "%s"
+		schema = "%s"
+		compatibility = "%s"
+	}
+`
+
 const fixtureDataSourceSchema = `
 	data "schemaregistry_schema" "test" {
 		subject = schemaregistry_schema.test.subject
 	}
 `
 
+const fixtureDataSourceSchemaWithCompatibility = `
+	data "schemaregistry_schema" "test" {
+		subject = schemaregistry_schema.test.subject
+		compatibility = "%s"
+	}
+`
+
 func fixtureDataSourceSchemaBuild(subject string, schema string) string {
 	return fmt.Sprintf("%s%s", fmt.Sprintf(fixtureCreateSchema, subject, schema), fixtureDataSourceSchema)
+}
+
+func fixtureDataSourceSchemaBuildWithCompatibility(subject string, schema string, compatibility string) string {
+	return fmt.Sprintf("%s%s",
+		fmt.Sprintf(fixtureCreateSchemaWithCompatibility, subject, schema, compatibility),
+		fmt.Sprintf(fixtureDataSourceSchemaWithCompatibility, compatibility))
 }
 
 type SchemaResource struct {

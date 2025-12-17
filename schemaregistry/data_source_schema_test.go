@@ -216,3 +216,31 @@ func TestAccDataSourceSchema_atVersion(t *testing.T) {
 		},
 	})
 }
+
+func TestAccDataSourceSchema_withCompatibility(t *testing.T) {
+	dataSourceName := "data.schemaregistry_schema.test"
+	u, err := uuid.GenerateUUID()
+	if err != nil {
+		t.Fatal(err)
+	}
+	subject := fmt.Sprintf("sub%s", u)
+
+	resource.Test(t, resource.TestCase{
+		ProviderFactories: testAccProviders,
+		PreCheck:          func() { testAccPreCheck(t) },
+		Steps: []resource.TestStep{
+			{
+				Config: fixtureDataSourceSchemaBuildWithCompatibility(subject, fixtureAvro1, "BACKWARD"),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(dataSourceName, "id", subject),
+					resource.TestCheckResourceAttr(dataSourceName, "subject", subject),
+					resource.TestCheckResourceAttr(dataSourceName, "version", "1"),
+					resource.TestCheckResourceAttr(dataSourceName, "schema", strings.ReplaceAll(fixtureAvro1, "\\", "")),
+					resource.TestCheckResourceAttrSet(dataSourceName, "schema_id"),
+					resource.TestCheckResourceAttr(dataSourceName, "compatibility", "BACKWARD"),
+				),
+			},
+		},
+	})
+}
+

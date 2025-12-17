@@ -496,6 +496,104 @@ func TestAccResourceSchemaReferences_import(t *testing.T) {
 	})
 }
 
+func TestAccResourceSchema_withCompatibility(t *testing.T) {
+	resourceName := "schemaregistry_schema.test"
+	u, err := uuid.GenerateUUID()
+	if err != nil {
+		t.Fatal(err)
+	}
+	subject := fmt.Sprintf("sub%s", u)
+
+	resource.Test(t, resource.TestCase{
+		ProviderFactories: testAccProviders,
+		PreCheck:          func() { testAccPreCheck(t) },
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(fixtureCreateSchemaWithCompatibility, subject, fixtureAvro1, "BACKWARD"),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(resourceName, "id", subject),
+					resource.TestCheckResourceAttr(resourceName, "subject", subject),
+					resource.TestCheckResourceAttrSet(resourceName, "schema_id"),
+					resource.TestCheckResourceAttr(resourceName, "version", "1"),
+					resource.TestCheckResourceAttr(resourceName, "schema", strings.ReplaceAll(fixtureAvro1, "\\", "")),
+					resource.TestCheckResourceAttr(resourceName, "compatibility", "BACKWARD"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+func TestAccResourceSchema_updateCompatibility(t *testing.T) {
+	resourceName := "schemaregistry_schema.test"
+	u, err := uuid.GenerateUUID()
+	if err != nil {
+		t.Fatal(err)
+	}
+	subject := fmt.Sprintf("sub%s", u)
+
+	resource.Test(t, resource.TestCase{
+		ProviderFactories: testAccProviders,
+		PreCheck:          func() { testAccPreCheck(t) },
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(fixtureCreateSchemaWithCompatibility, subject, fixtureAvro1, "BACKWARD"),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(resourceName, "id", subject),
+					resource.TestCheckResourceAttr(resourceName, "subject", subject),
+					resource.TestCheckResourceAttr(resourceName, "compatibility", "BACKWARD"),
+				),
+			},
+			{
+				Config: fmt.Sprintf(fixtureCreateSchemaWithCompatibility, subject, fixtureAvro1, "FULL"),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(resourceName, "id", subject),
+					resource.TestCheckResourceAttr(resourceName, "subject", subject),
+					resource.TestCheckResourceAttr(resourceName, "compatibility", "FULL"),
+				),
+			},
+		},
+	})
+}
+
+func TestAccResourceSchema_compatibilityWithSchemaUpdate(t *testing.T) {
+	resourceName := "schemaregistry_schema.test"
+	u, err := uuid.GenerateUUID()
+	if err != nil {
+		t.Fatal(err)
+	}
+	subject := fmt.Sprintf("sub%s", u)
+
+	resource.Test(t, resource.TestCase{
+		ProviderFactories: testAccProviders,
+		PreCheck:          func() { testAccPreCheck(t) },
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(fixtureCreateSchemaWithCompatibility, subject, fixtureAvro1, "BACKWARD"),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(resourceName, "id", subject),
+					resource.TestCheckResourceAttr(resourceName, "subject", subject),
+					resource.TestCheckResourceAttr(resourceName, "version", "1"),
+					resource.TestCheckResourceAttr(resourceName, "compatibility", "BACKWARD"),
+				),
+			},
+			{
+				Config: fmt.Sprintf(fixtureCreateSchemaWithCompatibility, subject, fixtureAvro2, "FULL"),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(resourceName, "id", subject),
+					resource.TestCheckResourceAttr(resourceName, "subject", subject),
+					resource.TestCheckResourceAttr(resourceName, "version", "2"),
+					resource.TestCheckResourceAttr(resourceName, "compatibility", "FULL"),
+				),
+			},
+		},
+	})
+}
+
 func RequiresImportError(resourceName string) *regexp.Regexp {
 	message := "to be managed via Terraform this resource needs to be imported into the State. Please see the resource documentation for %q for more information."
 	return regexp.MustCompile(fmt.Sprintf(message, resourceName))
