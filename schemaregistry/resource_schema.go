@@ -2,89 +2,107 @@ package schemaregistry
 
 import (
 	"context"
-	"log"
+	"fmt"
 	"strings"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/customdiff"
-
-	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/structure"
+	"github.com/hashicorp/terraform-plugin-framework-jsontypes/jsontypes"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/riferrei/srclient"
 )
 
-func resourceSchema() *schema.Resource {
-	return &schema.Resource{
-		CreateContext: schemaCreate,
-		UpdateContext: schemaUpdate,
-		ReadContext:   schemaRead,
-		DeleteContext: schemaDelete,
-		Importer: &schema.ResourceImporter{
-			StateContext: schema.ImportStatePassthroughContext,
-		},
-		CustomizeDiff: customdiff.ComputedIf("version", func(ctx context.Context, d *schema.ResourceDiff, meta interface{}) bool {
-			oldState, newState := d.GetChange("schema")
-			newJSON, _ := structure.NormalizeJsonString(newState)
-			oldJSON, _ := structure.NormalizeJsonString(oldState)
-			schemaHasChange := newJSON != oldJSON
+var (
+	_ resource.Resource                = &schemaResource{}
+	_ resource.ResourceWithConfigure   = &schemaResource{}
+	_ resource.ResourceWithImportState = &schemaResource{}
+)
 
-			// explicitly set a version change on schema change and make dependencies aware of a
-			// version changed at `plan` time (computed field)
-			return schemaHasChange || d.HasChange("version")
-		}),
-		Schema: map[string]*schema.Schema{
-			"subject": {
-				Type:        schema.TypeString,
-				Required:    true,
-				Description: "The subject related to the schema",
-				ForceNew:    true,
-			},
-			"schema": {
-				Type:        schema.TypeString,
-				Required:    true,
-				Description: "The schema string",
-				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
-					newJSON, _ := structure.NormalizeJsonString(new)
-					oldJSON, _ := structure.NormalizeJsonString(old)
-					return newJSON == oldJSON
+func newSchemaResource() resource.Resource {
+	return &schemaResource{}
+}
+
+type schemaResource struct {
+	client *srclient.SchemaRegistryClient
+}
+
+type schemaReferenceModel struct {
+	Name    types.String `tfsdk:"name"`
+	Subject types.String `tfsdk:"subject"`
+	Version types.Int64  `tfsdk:"version"`
+}
+
+type schemaResourceModel struct {
+	ID            types.String           `tfsdk:"id"`
+	Subject       types.String           `tfsdk:"subject"`
+	Schema        jsontypes.Normalized   `tfsdk:"schema"`
+	SchemaID      types.Int64            `tfsdk:"schema_id"`
+	Version       types.Int64            `tfsdk:"version"`
+	Compatibility types.String           `tfsdk:"compatibility"`
+	Reference     []schemaReferenceModel `tfsdk:"reference"`
+}
+
+func (r *schemaResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_schema"
+}
+
+func (r *schemaResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		MarkdownDescription: "Manages a schema (and its versions) in the Schema Registry under a subject.",
+		Attributes: map[string]schema.Attribute{
+			"id": schema.StringAttribute{
+				MarkdownDescription: "The subject of the schema.",
+				Computed:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
-			"schema_id": {
-				Type:        schema.TypeInt,
-				Computed:    true,
-				Description: "The ID of the schema",
+			"subject": schema.StringAttribute{
+				MarkdownDescription: "The subject related to the schema.",
+				Required:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
 			},
-			"version": {
-				Type:        schema.TypeInt,
-				Computed:    true,
-				Description: "The schema version",
+			"schema": schema.StringAttribute{
+				MarkdownDescription: "The schema string.",
+				Required:            true,
+				CustomType:          jsontypes.NormalizedType{},
 			},
-			"compatibility": {
-				Type:        schema.TypeString,
-				Optional:    true,
-				Computed:    true,
-				Description: "The compatibility level of the subject",
+			"schema_id": schema.Int64Attribute{
+				MarkdownDescription: "The ID of the schema.",
+				Computed:            true,
 			},
-			"reference": {
-				Type:        schema.TypeList,
-				Optional:    true,
-				Description: "The referenced schema list",
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"name": {
-							Type:        schema.TypeString,
-							Required:    true,
-							Description: "The referenced schema name",
+			"version": schema.Int64Attribute{
+				MarkdownDescription: "The schema version.",
+				Computed:            true,
+			},
+			"compatibility": schema.StringAttribute{
+				MarkdownDescription: "The compatibility level of the subject.",
+				Optional:            true,
+				Computed:            true,
+			},
+		},
+		Blocks: map[string]schema.Block{
+			"reference": schema.ListNestedBlock{
+				MarkdownDescription: "The referenced schema list.",
+				NestedObject: schema.NestedBlockObject{
+					Attributes: map[string]schema.Attribute{
+						"name": schema.StringAttribute{
+							MarkdownDescription: "The referenced schema name.",
+							Required:            true,
 						},
-						"subject": {
-							Type:        schema.TypeString,
-							Required:    true,
-							Description: "The referenced schema subject",
+						"subject": schema.StringAttribute{
+							MarkdownDescription: "The referenced schema subject.",
+							Required:            true,
 						},
-						"version": {
-							Type:        schema.TypeInt,
-							Required:    true,
-							Description: "The referenced schema version",
+						"version": schema.Int64Attribute{
+							MarkdownDescription: "The referenced schema version.",
+							Required:            true,
 						},
 					},
 				},
@@ -93,155 +111,181 @@ func resourceSchema() *schema.Resource {
 	}
 }
 
-func schemaCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	subject := d.Get("subject").(string)
-	schemaString := d.Get("schema").(string)
-	references := ToRegistryReferences(d.Get("reference").([]interface{}))
+func (r *schemaResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+	if req.ProviderData == nil {
+		return
+	}
+	client, ok := req.ProviderData.(*srclient.SchemaRegistryClient)
+	if !ok {
+		resp.Diagnostics.AddError("Unexpected provider data type", fmt.Sprintf("Expected *srclient.SchemaRegistryClient, got: %T.", req.ProviderData))
+		return
+	}
+	r.client = client
+}
 
-	client := meta.(*srclient.SchemaRegistryClient)
-
-	// CreateSchema's response only carries the schema ID, not the version, so the
-	// computed attributes are populated by reading the subject back below.
-	if _, err := client.CreateSchema(subject, schemaString, srclient.Avro, references...); err != nil {
-		return diag.FromErr(err)
+func (r *schemaResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	var plan schemaResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
 	}
 
-	// Set compatibility level if user provided one
-	if compatibility, ok := d.GetOk("compatibility"); ok {
-		if _, err := client.ChangeSubjectCompatibilityLevel(subject, srclient.CompatibilityLevel(compatibility.(string))); err != nil {
-			return diag.FromErr(err)
+	subject := plan.Subject.ValueString()
+	if _, err := r.client.CreateSchema(subject, plan.Schema.ValueString(), srclient.Avro, expandReferences(plan.Reference)...); err != nil {
+		resp.Diagnostics.AddError("Failed to create schema", err.Error())
+		return
+	}
+
+	if !plan.Compatibility.IsNull() && !plan.Compatibility.IsUnknown() && plan.Compatibility.ValueString() != "" {
+		if _, err := r.client.ChangeSubjectCompatibilityLevel(subject, srclient.CompatibilityLevel(plan.Compatibility.ValueString())); err != nil {
+			resp.Diagnostics.AddError("Failed to set compatibility level", err.Error())
+			return
 		}
 	}
 
-	d.SetId(formatSchemaVersionID(subject))
+	plan.ID = types.StringValue(subject)
+	if found := r.readInto(&plan, &resp.Diagnostics); resp.Diagnostics.HasError() {
+		return
+	} else if !found {
+		resp.Diagnostics.AddError("Failed to read schema after create", fmt.Sprintf("subject %q not found immediately after creation", subject))
+		return
+	}
 
-	return schemaRead(ctx, d, meta)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
-func schemaUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	subject := d.Get("subject").(string)
-	schemaString := d.Get("schema").(string)
-	references := ToRegistryReferences(d.Get("reference").([]interface{}))
+func (r *schemaResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	var state schemaResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 
-	client := meta.(*srclient.SchemaRegistryClient)
+	found := r.readInto(&state, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if !found {
+		resp.State.RemoveResource(ctx)
+		return
+	}
 
-	if _, err := client.CreateSchema(subject, schemaString, srclient.Avro, references...); err != nil {
-		// 42201 is schema incompatible error code from Confluent Schema Registry
-		// https://docs.confluent.io/platform/current/schema-registry/develop/api.html#post--subjects-(string-%20subject)-versions
+	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+}
+
+func (r *schemaResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	var plan, state schemaResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	subject := plan.ID.ValueString()
+	if _, err := r.client.CreateSchema(subject, plan.Schema.ValueString(), srclient.Avro, expandReferences(plan.Reference)...); err != nil {
+		// 42201 / 409 is the incompatible-schema error from Confluent Schema Registry.
 		if strings.Contains(err.Error(), "409") || strings.Contains(err.Error(), "42201") {
-			return diag.Errorf(`invalid "schema": incompatible`)
+			resp.Diagnostics.AddError("Invalid schema", `invalid "schema": incompatible`)
+			return
 		}
-		return diag.FromErr(err)
+		resp.Diagnostics.AddError("Failed to update schema", err.Error())
+		return
 	}
 
-	// Update compatibility level if it was changed
-	if d.HasChange("compatibility") {
-		if compatibility, ok := d.GetOk("compatibility"); ok {
-			if _, err := client.ChangeSubjectCompatibilityLevel(subject, srclient.CompatibilityLevel(compatibility.(string))); err != nil {
-				return diag.FromErr(err)
-			}
+	if !plan.Compatibility.Equal(state.Compatibility) && !plan.Compatibility.IsNull() && !plan.Compatibility.IsUnknown() && plan.Compatibility.ValueString() != "" {
+		if _, err := r.client.ChangeSubjectCompatibilityLevel(subject, srclient.CompatibilityLevel(plan.Compatibility.ValueString())); err != nil {
+			resp.Diagnostics.AddError("Failed to set compatibility level", err.Error())
+			return
 		}
 	}
 
-	// The computed attributes (version in particular) are populated by reading
-	// the subject back: CreateSchema's response does not carry the version.
-	return schemaRead(ctx, d, meta)
+	if found := r.readInto(&plan, &resp.Diagnostics); resp.Diagnostics.HasError() {
+		return
+	} else if !found {
+		resp.State.RemoveResource(ctx)
+		return
+	}
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
-func schemaRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	var diags diag.Diagnostics
+func (r *schemaResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	var state schemaResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 
-	client := meta.(*srclient.SchemaRegistryClient)
-	subject := extractSchemaVersionID(d.Id())
+	subject := state.ID.ValueString()
+	// Since srclient 0.7.4 a subject must be soft-deleted then hard-deleted.
+	if err := r.client.DeleteSubject(subject, false); err != nil {
+		resp.Diagnostics.AddError("Failed to delete schema", err.Error())
+		return
+	}
+	if err := r.client.DeleteSubject(subject, true); err != nil {
+		resp.Diagnostics.AddError("Failed to delete schema", err.Error())
+		return
+	}
+}
 
-	schema, err := client.GetLatestSchema(subject)
+func (r *schemaResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+}
+
+// readInto fetches the latest schema for m.ID's subject and populates m.
+// Returns false (without diagnostics) when the subject no longer exists.
+func (r *schemaResource) readInto(m *schemaResourceModel, diags *diag.Diagnostics) (found bool) {
+	subject := m.ID.ValueString()
+
+	sch, err := r.client.GetLatestSchema(subject)
 	if err != nil {
 		if strings.Contains(err.Error(), "404") {
-			log.Printf("[WARN] Schema (%s) not found, removing from state", d.Id())
-			d.SetId("")
-			return nil
+			return false
 		}
-		return diag.FromErr(err)
+		diags.AddError("Failed to read schema", err.Error())
+		return false
 	}
-	compatibility, err := client.GetCompatibilityLevel(subject, true)
+
+	compatibility, err := r.client.GetCompatibilityLevel(subject, true)
 	if err != nil {
-		return diag.FromErr(err)
-	}
-	if err = d.Set("schema", schema.Schema()); err != nil {
-		return diag.FromErr(err)
-	}
-	if err = d.Set("schema_id", schema.ID()); err != nil {
-		return diag.FromErr(err)
-	}
-	if err = d.Set("subject", subject); err != nil {
-		return diag.FromErr(err)
-	}
-	if err = d.Set("version", schema.Version()); err != nil {
-		return diag.FromErr(err)
+		diags.AddError("Failed to read compatibility level", err.Error())
+		return false
 	}
 
-	if err = d.Set("reference", FromRegistryReferences(schema.References())); err != nil {
-		return diag.FromErr(err)
+	m.Subject = types.StringValue(subject)
+	m.Schema = jsontypes.NewNormalizedValue(sch.Schema())
+	m.SchemaID = types.Int64Value(int64(sch.ID()))
+	m.Version = types.Int64Value(int64(sch.Version()))
+	m.Reference = flattenReferences(sch.References())
+	if compatibility != nil {
+		m.Compatibility = types.StringValue(string(*compatibility))
 	}
-	if err := d.Set("compatibility", compatibility); err != nil {
-		return diag.FromErr(err)
-	}
-
-	return diags
+	return true
 }
 
-func schemaDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	var diags diag.Diagnostics
-
-	client := meta.(*srclient.SchemaRegistryClient)
-	subject := extractSchemaVersionID(d.Id())
-
-	// since 0.7.4 we need to first soft delete the schema and then hard delete it
-	err := client.DeleteSubject(subject, false)
-	if err != nil {
-		return diag.FromErr(err)
-	}
-	err = client.DeleteSubject(subject, true)
-	if err != nil {
-		return diag.FromErr(err)
-	}
-
-	return diags
-}
-
-func FromRegistryReferences(references []srclient.Reference) []interface{} {
-	if len(references) == 0 {
-		return make([]interface{}, 0)
-	}
-
-	refs := make([]interface{}, 0, len(references))
-	for _, reference := range references {
-		refs = append(refs, map[string]interface{}{
-			"name":    reference.Name,
-			"subject": reference.Subject,
-			"version": reference.Version,
+func expandReferences(references []schemaReferenceModel) []srclient.Reference {
+	refs := make([]srclient.Reference, 0, len(references))
+	for _, ref := range references {
+		refs = append(refs, srclient.Reference{
+			Name:    ref.Name.ValueString(),
+			Subject: ref.Subject.ValueString(),
+			Version: int(ref.Version.ValueInt64()),
 		})
 	}
-
 	return refs
 }
 
-func ToRegistryReferences(references []interface{}) []srclient.Reference {
-
+func flattenReferences(references []srclient.Reference) []schemaReferenceModel {
 	if len(references) == 0 {
-		return make([]srclient.Reference, 0)
+		return nil
 	}
-
-	refs := make([]srclient.Reference, 0, len(references))
-	for _, reference := range references {
-		r := reference.(map[string]interface{})
-
-		refs = append(refs, srclient.Reference{
-			Name:    r["name"].(string),
-			Subject: r["subject"].(string),
-			Version: r["version"].(int),
+	refs := make([]schemaReferenceModel, 0, len(references))
+	for _, ref := range references {
+		refs = append(refs, schemaReferenceModel{
+			Name:    types.StringValue(ref.Name),
+			Subject: types.StringValue(ref.Subject),
+			Version: types.Int64Value(int64(ref.Version)),
 		})
 	}
-
 	return refs
 }

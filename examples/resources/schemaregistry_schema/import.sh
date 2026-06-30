@@ -1,0 +1,1 @@
+terraform import schemaregistry_schema.example example
