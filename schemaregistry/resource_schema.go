@@ -94,65 +94,38 @@ func resourceSchema() *schema.Resource {
 }
 
 func schemaCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	var diags diag.Diagnostics
-
 	subject := d.Get("subject").(string)
 	schemaString := d.Get("schema").(string)
 	references := ToRegistryReferences(d.Get("reference").([]interface{}))
 
 	client := meta.(*srclient.SchemaRegistryClient)
 
-	schema, err := client.CreateSchema(subject, schemaString, srclient.Avro, references...)
-	if err != nil {
+	// CreateSchema's response only carries the schema ID, not the version, so the
+	// computed attributes are populated by reading the subject back below.
+	if _, err := client.CreateSchema(subject, schemaString, srclient.Avro, references...); err != nil {
 		return diag.FromErr(err)
 	}
 
 	// Set compatibility level if user provided one
 	if compatibility, ok := d.GetOk("compatibility"); ok {
-		_, err = client.ChangeSubjectCompatibilityLevel(subject, srclient.CompatibilityLevel(compatibility.(string)))
-		if err != nil {
+		if _, err := client.ChangeSubjectCompatibilityLevel(subject, srclient.CompatibilityLevel(compatibility.(string))); err != nil {
 			return diag.FromErr(err)
 		}
 	}
 
 	d.SetId(formatSchemaVersionID(subject))
-	if err = d.Set("schema_id", schema.ID()); err != nil {
-		return diag.FromErr(err)
-	}
-	if err = d.Set("schema", schema.Schema()); err != nil {
-		return diag.FromErr(err)
-	}
-	if err = d.Set("version", schema.Version()); err != nil {
-		return diag.FromErr(err)
-	}
 
-	if err = d.Set("reference", FromRegistryReferences(schema.References())); err != nil {
-		return diag.FromErr(err)
-	}
-
-	// Fetch and set the effective compatibility level (either user-set or global default)
-	effectiveCompatibility, err := client.GetCompatibilityLevel(subject, true)
-	if err != nil {
-		return diag.FromErr(err)
-	}
-	if err = d.Set("compatibility", effectiveCompatibility); err != nil {
-		return diag.FromErr(err)
-	}
-
-	return diags
+	return schemaRead(ctx, d, meta)
 }
 
 func schemaUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	var diags diag.Diagnostics
-
 	subject := d.Get("subject").(string)
 	schemaString := d.Get("schema").(string)
 	references := ToRegistryReferences(d.Get("reference").([]interface{}))
 
 	client := meta.(*srclient.SchemaRegistryClient)
 
-	schema, err := client.CreateSchema(subject, schemaString, srclient.Avro, references...)
-	if err != nil {
+	if _, err := client.CreateSchema(subject, schemaString, srclient.Avro, references...); err != nil {
 		// 42201 is schema incompatible error code from Confluent Schema Registry
 		// https://docs.confluent.io/platform/current/schema-registry/develop/api.html#post--subjects-(string-%20subject)-versions
 		if strings.Contains(err.Error(), "409") || strings.Contains(err.Error(), "42201") {
@@ -164,37 +137,15 @@ func schemaUpdate(ctx context.Context, d *schema.ResourceData, meta interface{})
 	// Update compatibility level if it was changed
 	if d.HasChange("compatibility") {
 		if compatibility, ok := d.GetOk("compatibility"); ok {
-			_, err = client.ChangeSubjectCompatibilityLevel(subject, srclient.CompatibilityLevel(compatibility.(string)))
-			if err != nil {
+			if _, err := client.ChangeSubjectCompatibilityLevel(subject, srclient.CompatibilityLevel(compatibility.(string))); err != nil {
 				return diag.FromErr(err)
 			}
 		}
 	}
 
-	if err = d.Set("schema_id", schema.ID()); err != nil {
-		return diag.FromErr(err)
-	}
-	if err = d.Set("schema", schema.Schema()); err != nil {
-		return diag.FromErr(err)
-	}
-	if err = d.Set("version", schema.Version()); err != nil {
-		return diag.FromErr(err)
-	}
-
-	if err = d.Set("reference", FromRegistryReferences(schema.References())); err != nil {
-		return diag.FromErr(err)
-	}
-
-	// Fetch and set the effective compatibility level
-	effectiveCompatibility, err := client.GetCompatibilityLevel(subject, true)
-	if err != nil {
-		return diag.FromErr(err)
-	}
-	if err = d.Set("compatibility", effectiveCompatibility); err != nil {
-		return diag.FromErr(err)
-	}
-
-	return diags
+	// The computed attributes (version in particular) are populated by reading
+	// the subject back: CreateSchema's response does not carry the version.
+	return schemaRead(ctx, d, meta)
 }
 
 func schemaRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
