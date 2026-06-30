@@ -22,8 +22,8 @@ func TestAccDataSourceSchema_basic(t *testing.T) {
 	subject := fmt.Sprintf("sub%s", u)
 
 	resource.Test(t, resource.TestCase{
-		ProviderFactories: testAccProviders,
-		PreCheck:          func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		PreCheck:                 func() { testAccPreCheck(t) },
 		Steps: []resource.TestStep{
 			{
 				Config: fixtureDataSourceSchemaBuild(subject, fixtureAvro1),
@@ -59,7 +59,7 @@ func TestAccDataSourceSchemaReferences_basic(t *testing.T) {
 	client := srclient.CreateSchemaRegistryClient(url)
 	if hasBasicAuth {
 		username := os.Getenv("SCHEMA_REGISTRY_USERNAME")
-		password :=  os.Getenv("SCHEMA_REGISTRY_PASSWORD")
+		password := os.Getenv("SCHEMA_REGISTRY_PASSWORD")
 		client.SetCredentials(username, password)
 	}
 	if hasBearerToken {
@@ -109,8 +109,8 @@ func TestAccDataSourceSchemaReferences_basic(t *testing.T) {
 
 	// WHEN / THEN
 	resource.Test(t, resource.TestCase{
-		ProviderFactories: testAccProviders,
-		PreCheck:          func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		PreCheck:                 func() { testAccPreCheck(t) },
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(`
@@ -155,7 +155,7 @@ func TestAccDataSourceSchema_atVersion(t *testing.T) {
 	client := srclient.CreateSchemaRegistryClient(url)
 	if hasBasicAuth {
 		username := os.Getenv("SCHEMA_REGISTRY_USERNAME")
-		password :=  os.Getenv("SCHEMA_REGISTRY_PASSWORD")
+		password := os.Getenv("SCHEMA_REGISTRY_PASSWORD")
 		client.SetCredentials(username, password)
 	}
 	if hasBearerToken {
@@ -195,8 +195,8 @@ func TestAccDataSourceSchema_atVersion(t *testing.T) {
 
 	// WHEN / THEN
 	resource.Test(t, resource.TestCase{
-		ProviderFactories: testAccProviders,
-		PreCheck:          func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		PreCheck:                 func() { testAccPreCheck(t) },
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(`
@@ -226,8 +226,8 @@ func TestAccDataSourceSchema_withCompatibility(t *testing.T) {
 	subject := fmt.Sprintf("sub%s", u)
 
 	resource.Test(t, resource.TestCase{
-		ProviderFactories: testAccProviders,
-		PreCheck:          func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		PreCheck:                 func() { testAccPreCheck(t) },
 		Steps: []resource.TestStep{
 			{
 				Config: fixtureDataSourceSchemaBuildWithCompatibility(subject, fixtureAvro1, "BACKWARD"),
@@ -243,4 +243,3 @@ func TestAccDataSourceSchema_withCompatibility(t *testing.T) {
 		},
 	})
 }
-

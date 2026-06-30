@@ -2,61 +2,86 @@ package schemaregistry
 
 import (
 	"context"
+	"fmt"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-framework/datasource"
+	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/riferrei/srclient"
 )
 
-func dataSourceSchema() *schema.Resource {
-	return &schema.Resource{
-		ReadContext: dataSourceSubjectRead,
-		Schema: map[string]*schema.Schema{
-			"subject": {
-				Type:        schema.TypeString,
-				Required:    true,
-				Description: "The subject related to the schema",
+var (
+	_ datasource.DataSource              = &schemaDataSource{}
+	_ datasource.DataSourceWithConfigure = &schemaDataSource{}
+)
+
+func newSchemaDataSource() datasource.DataSource {
+	return &schemaDataSource{}
+}
+
+type schemaDataSource struct {
+	client *srclient.SchemaRegistryClient
+}
+
+type schemaDataSourceModel struct {
+	ID            types.String           `tfsdk:"id"`
+	Subject       types.String           `tfsdk:"subject"`
+	Version       types.Int64            `tfsdk:"version"`
+	SchemaID      types.Int64            `tfsdk:"schema_id"`
+	Schema        types.String           `tfsdk:"schema"`
+	Compatibility types.String           `tfsdk:"compatibility"`
+	References    []schemaReferenceModel `tfsdk:"references"`
+}
+
+func (d *schemaDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_schema"
+}
+
+func (d *schemaDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		MarkdownDescription: "Fetches a schema and its metadata from the Schema Registry by subject (optionally at a specific version).",
+		Attributes: map[string]schema.Attribute{
+			"id": schema.StringAttribute{
+				MarkdownDescription: "The subject of the schema.",
+				Computed:            true,
 			},
-			"version": {
-				Type:        schema.TypeInt,
-				Optional:    true,
-				Description: "The version of the schema",
+			"subject": schema.StringAttribute{
+				MarkdownDescription: "The subject related to the schema.",
+				Required:            true,
 			},
-			"schema_id": {
-				Type:        schema.TypeInt,
-				Computed:    true,
-				Description: "The schema ID",
+			"version": schema.Int64Attribute{
+				MarkdownDescription: "The version of the schema. If omitted, the latest version is returned.",
+				Optional:            true,
+				Computed:            true,
 			},
-			"schema": {
-				Type:        schema.TypeString,
-				Computed:    true,
-				Description: "The schema string",
+			"schema_id": schema.Int64Attribute{
+				MarkdownDescription: "The schema ID.",
+				Computed:            true,
 			},
-			"compatibility": {
-				Type:        schema.TypeString,
-				Optional:    true,
-				Description: "The compatibility level of the subject",
+			"schema": schema.StringAttribute{
+				MarkdownDescription: "The schema string.",
+				Computed:            true,
 			},
-			"references": {
-				Type:        schema.TypeList,
-				Computed:    true,
-				Description: "The referenced schema names list",
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"name": {
-							Type:        schema.TypeString,
-							Computed:    true,
-							Description: "The referenced schema name",
+			"compatibility": schema.StringAttribute{
+				MarkdownDescription: "The compatibility level of the subject.",
+				Optional:            true,
+			},
+			"references": schema.ListNestedAttribute{
+				MarkdownDescription: "The referenced schema names list.",
+				Computed:            true,
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						"name": schema.StringAttribute{
+							MarkdownDescription: "The referenced schema name.",
+							Computed:            true,
 						},
-						"subject": {
-							Type:        schema.TypeString,
-							Computed:    true,
-							Description: "The subject related to the schema",
+						"subject": schema.StringAttribute{
+							MarkdownDescription: "The subject related to the schema.",
+							Computed:            true,
 						},
-						"version": {
-							Type:        schema.TypeInt,
-							Computed:    true,
-							Description: "The version of the schema",
+						"version": schema.Int64Attribute{
+							MarkdownDescription: "The version of the schema.",
+							Computed:            true,
 						},
 					},
 				},
@@ -65,45 +90,45 @@ func dataSourceSchema() *schema.Resource {
 	}
 }
 
-func dataSourceSubjectRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	var diags diag.Diagnostics
+func (d *schemaDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+	if req.ProviderData == nil {
+		return
+	}
+	client, ok := req.ProviderData.(*srclient.SchemaRegistryClient)
+	if !ok {
+		resp.Diagnostics.AddError("Unexpected provider data type", fmt.Sprintf("Expected *srclient.SchemaRegistryClient, got: %T.", req.ProviderData))
+		return
+	}
+	d.client = client
+}
 
-	subject := d.Get("subject").(string)
-	version := d.Get("version").(int)
-	compatibility := d.Get("compatibility").(string)
+func (d *schemaDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
+	var config schemaDataSourceModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 
-	client := m.(*srclient.SchemaRegistryClient)
-	var schema *srclient.Schema
+	subject := config.Subject.ValueString()
+
+	var sch *srclient.Schema
 	var err error
-
-	if version > 0 {
-		schema, err = client.GetSchemaByVersion(subject, version)
-
+	if config.Version.ValueInt64() > 0 {
+		sch, err = d.client.GetSchemaByVersion(subject, int(config.Version.ValueInt64()))
 	} else {
-		schema, err = client.GetLatestSchema(subject)
+		sch, err = d.client.GetLatestSchema(subject)
 	}
-
 	if err != nil {
-		return diag.FromErr(err)
+		resp.Diagnostics.AddError("Failed to read schema", err.Error())
+		return
 	}
 
-	if err = d.Set("schema", schema.Schema()); err != nil {
-		return diag.FromErr(err)
-	}
-	if err = d.Set("schema_id", schema.ID()); err != nil {
-		return diag.FromErr(err)
-	}
-	if err = d.Set("version", schema.Version()); err != nil {
-		return diag.FromErr(err)
-	}
+	config.ID = types.StringValue(subject)
+	config.Schema = types.StringValue(sch.Schema())
+	config.SchemaID = types.Int64Value(int64(sch.ID()))
+	config.Version = types.Int64Value(int64(sch.Version()))
+	config.References = flattenReferences(sch.References())
+	// compatibility is a passthrough of the configured value.
 
-	if err = d.Set("references", FromRegistryReferences(schema.References())); err != nil {
-		return diag.FromErr(err)
-	}
-	if err := d.Set("compatibility", compatibility); err != nil {
-		return diag.FromErr(err)
-	}
-	d.SetId(formatSchemaVersionID(subject))
-
-	return diags
+	resp.Diagnostics.Append(resp.State.Set(ctx, &config)...)
 }

@@ -18,8 +18,8 @@ func TestAccResourceSchema_basic(t *testing.T) {
 	}
 	subject := fmt.Sprintf("sub%s", u)
 	resource.Test(t, resource.TestCase{
-		ProviderFactories: testAccProviders,
-		PreCheck:          func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		PreCheck:                 func() { testAccPreCheck(t) },
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(fixtureCreateSchema, subject, fixtureAvro1),
@@ -49,8 +49,8 @@ func TestAccResourceSchema_updateCompatible(t *testing.T) {
 	subject := fmt.Sprintf("sub%s", u)
 
 	resource.Test(t, resource.TestCase{
-		ProviderFactories: testAccProviders,
-		PreCheck:          func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		PreCheck:                 func() { testAccPreCheck(t) },
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(fixtureCreateSchema, subject, fixtureAvro1),
@@ -90,8 +90,8 @@ func TestAccResourceSchema_updateIncompatible(t *testing.T) {
 	subject := fmt.Sprintf("sub%s", u)
 
 	resource.Test(t, resource.TestCase{
-		ProviderFactories: testAccProviders,
-		PreCheck:          func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		PreCheck:                 func() { testAccPreCheck(t) },
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(fixtureCreateSchema, subject, fixtureAvro1),
@@ -234,8 +234,8 @@ func TestAccResourceSchemaReferences_basic(t *testing.T) {
 
 			config := fixtureResourceSchemaWithReferenceBuild(tc.fixture)
 			resource.Test(t, resource.TestCase{
-				ProviderFactories: testAccProviders,
-				PreCheck:          func() { testAccPreCheck(t) },
+				ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+				PreCheck:                 func() { testAccPreCheck(t) },
 				Steps: []resource.TestStep{
 					{
 						Config: config,
@@ -258,8 +258,8 @@ func TestAccResourceSchemaReferences_validateSchema(t *testing.T) {
 	schemaWithReferenceSubject := fmt.Sprintf("sub-%s", u)
 
 	resource.Test(t, resource.TestCase{
-		ProviderFactories: testAccProviders,
-		PreCheck:          func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		PreCheck:                 func() { testAccPreCheck(t) },
 		Steps: []resource.TestStep{
 			{
 				Config: fixtureResourceSchemaWithReferenceBuild(schemaWithReferenceFixture{
@@ -299,8 +299,8 @@ func TestAccResourceSchemaReferences_updateCompatible(t *testing.T) {
 	schemaWithReferenceSubject := fmt.Sprintf("sub-%s", u)
 
 	resource.Test(t, resource.TestCase{
-		ProviderFactories: testAccProviders,
-		PreCheck:          func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		PreCheck:                 func() { testAccPreCheck(t) },
 		Steps: []resource.TestStep{
 			{
 				Config: fixtureResourceSchemaWithReferenceBuild(schemaWithReferenceFixture{
@@ -382,8 +382,8 @@ func TestAccResourceSchemaReferences_updateIncompatible(t *testing.T) {
 	schemaWithReferenceSubject := fmt.Sprintf("sub-%s", u)
 
 	resource.Test(t, resource.TestCase{
-		ProviderFactories: testAccProviders,
-		PreCheck:          func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		PreCheck:                 func() { testAccPreCheck(t) },
 		Steps: []resource.TestStep{
 			{
 				Config: fixtureResourceSchemaWithReferenceBuild(schemaWithReferenceFixture{
@@ -456,8 +456,8 @@ func TestAccResourceSchemaReferences_import(t *testing.T) {
 	schemaWithReferenceSubject := fmt.Sprintf("sub-%s", u)
 
 	resource.Test(t, resource.TestCase{
-		ProviderFactories: testAccProviders,
-		PreCheck:          func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		PreCheck:                 func() { testAccPreCheck(t) },
 		Steps: []resource.TestStep{
 			{
 				Config: fixtureResourceSchemaWithReferenceBuild(schemaWithReferenceFixture{
@@ -505,8 +505,8 @@ func TestAccResourceSchema_withCompatibility(t *testing.T) {
 	subject := fmt.Sprintf("sub%s", u)
 
 	resource.Test(t, resource.TestCase{
-		ProviderFactories: testAccProviders,
-		PreCheck:          func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		PreCheck:                 func() { testAccPreCheck(t) },
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(fixtureCreateSchemaWithCompatibility, subject, fixtureAvro1, "BACKWARD"),
@@ -537,8 +537,8 @@ func TestAccResourceSchema_updateCompatibility(t *testing.T) {
 	subject := fmt.Sprintf("sub%s", u)
 
 	resource.Test(t, resource.TestCase{
-		ProviderFactories: testAccProviders,
-		PreCheck:          func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		PreCheck:                 func() { testAccPreCheck(t) },
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(fixtureCreateSchemaWithCompatibility, subject, fixtureAvro1, "BACKWARD"),
@@ -569,8 +569,8 @@ func TestAccResourceSchema_compatibilityWithSchemaUpdate(t *testing.T) {
 	subject := fmt.Sprintf("sub%s", u)
 
 	resource.Test(t, resource.TestCase{
-		ProviderFactories: testAccProviders,
-		PreCheck:          func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		PreCheck:                 func() { testAccPreCheck(t) },
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(fixtureCreateSchemaWithCompatibility, subject, fixtureAvro1, "BACKWARD"),
