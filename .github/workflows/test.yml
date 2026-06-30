@@ -15,6 +15,11 @@ jobs:
           go-version-file: "go.mod"
           cache: true
 
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
       - name: Start Kafka (KRaft, single broker)
         run: |
           docker network create srnet
@@ -60,4 +65,8 @@ jobs:
           SCHEMA_REGISTRY_URL: http://localhost:8081
           SCHEMA_REGISTRY_USERNAME: dev
           SCHEMA_REGISTRY_PASSWORD: dev
-        run: ACCTEST_PARALLELISM=4 make testacc
+        run: |
+          # Use the Terraform installed above so the test framework doesn't try
+          # to download + GPG-verify a CLI (HashiCorp's bundled release key is expired).
+          export TF_ACC_TERRAFORM_PATH="$(which terraform)"
+          ACCTEST_PARALLELISM=4 make testacc
