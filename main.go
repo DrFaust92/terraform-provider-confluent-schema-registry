@@ -22,7 +22,7 @@ func main() {
 	flag.Parse()
 
 	err := providerserver.Serve(context.Background(), schemaregistry.New(version), providerserver.ServeOpts{
-		Address: "registry.terraform.io/drfaust92/conflunet-schema-registry",
+		Address: "registry.terraform.io/drfaust92/confluent-schema-registry",
 		Debug:   debug,
 	})
 	if err != nil {
