@@ -1,0 +1,63 @@
+name: integration-test
+
+on: pull_request
+
+jobs:
+  testacc:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: "go.mod"
+          cache: true
+
+      - name: Start Kafka (KRaft, single broker)
+        run: |
+          docker network create srnet
+          docker run -d --name kafka --network srnet \
+            -e KAFKA_NODE_ID=1 \
+            -e KAFKA_PROCESS_ROLES=broker,controller \
+            -e KAFKA_CONTROLLER_QUORUM_VOTERS=1@kafka:29093 \
+            -e KAFKA_LISTENERS=PLAINTEXT://0.0.0.0:29092,CONTROLLER://0.0.0.0:29093 \
+            -e KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:29092 \
+            -e KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT \
+            -e KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER \
+            -e KAFKA_INTER_BROKER_LISTENER_NAME=PLAINTEXT \
+            -e KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1 \
+            -e KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS=0 \
+            -e CLUSTER_ID=MkU3OEVBNTcwNTJENDM2Qk \
+            confluentinc/cp-kafka:7.7.1
+
+      - name: Start Schema Registry
+        run: |
+          docker run -d --name schema-registry --network srnet -p 8081:8081 \
+            -e SCHEMA_REGISTRY_HOST_NAME=schema-registry \
+            -e SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS=PLAINTEXT://kafka:29092 \
+            -e SCHEMA_REGISTRY_LISTENERS=http://0.0.0.0:8081 \
+            confluentinc/cp-schema-registry:7.7.1
+
+      - name: Wait for Schema Registry
+        run: |
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:8081/subjects >/dev/null 2>&1; then
+              echo "Schema Registry is ready"
+              exit 0
+            fi
+            echo "Waiting for Schema Registry... ($i/60)"
+            sleep 2
+          done
+          echo "Schema Registry did not become ready in time"
+          docker logs schema-registry || true
+          docker logs kafka || true
+          exit 1
+
+      - name: Run acceptance tests
+        env:
+          SCHEMA_REGISTRY_URL: http://localhost:8081
+          SCHEMA_REGISTRY_USERNAME: dev
+          SCHEMA_REGISTRY_PASSWORD: dev
+        run: ACCTEST_PARALLELISM=4 make testacc
