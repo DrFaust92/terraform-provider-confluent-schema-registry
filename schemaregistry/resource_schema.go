@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/resource/identityschema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
@@ -20,7 +21,13 @@ var (
 	_ resource.Resource                = &schemaResource{}
 	_ resource.ResourceWithConfigure   = &schemaResource{}
 	_ resource.ResourceWithImportState = &schemaResource{}
+	_ resource.ResourceWithIdentity    = &schemaResource{}
 )
+
+// schemaResourceIdentityModel is the resource identity: the subject name.
+type schemaResourceIdentityModel struct {
+	Subject types.String `tfsdk:"subject"`
+}
 
 func newSchemaResource() resource.Resource {
 	return &schemaResource{}
@@ -111,6 +118,17 @@ func (r *schemaResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 	}
 }
 
+func (r *schemaResource) IdentitySchema(_ context.Context, _ resource.IdentitySchemaRequest, resp *resource.IdentitySchemaResponse) {
+	resp.IdentitySchema = identityschema.Schema{
+		Attributes: map[string]identityschema.Attribute{
+			"subject": identityschema.StringAttribute{
+				RequiredForImport: true,
+				Description:       "The subject the schema is registered under.",
+			},
+		},
+	}
+}
+
 func (r *schemaResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
@@ -152,6 +170,7 @@ func (r *schemaResource) Create(ctx context.Context, req resource.CreateRequest,
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+	resp.Diagnostics.Append(resp.Identity.Set(ctx, schemaResourceIdentityModel{Subject: plan.ID})...)
 }
 
 func (r *schemaResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
@@ -171,6 +190,7 @@ func (r *schemaResource) Read(ctx context.Context, req resource.ReadRequest, res
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+	resp.Diagnostics.Append(resp.Identity.Set(ctx, schemaResourceIdentityModel{Subject: state.ID})...)
 }
 
 func (r *schemaResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
@@ -207,6 +227,7 @@ func (r *schemaResource) Update(ctx context.Context, req resource.UpdateRequest,
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+	resp.Diagnostics.Append(resp.Identity.Set(ctx, schemaResourceIdentityModel{Subject: plan.ID})...)
 }
 
 func (r *schemaResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
@@ -229,7 +250,7 @@ func (r *schemaResource) Delete(ctx context.Context, req resource.DeleteRequest,
 }
 
 func (r *schemaResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+	resource.ImportStatePassthroughWithIdentity(ctx, path.Root("id"), path.Root("subject"), req, resp)
 }
 
 // readInto fetches the latest schema for m.ID's subject and populates m.
