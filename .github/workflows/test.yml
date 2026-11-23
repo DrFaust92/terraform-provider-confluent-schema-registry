@@ -7,7 +7,18 @@ permissions:
 
 jobs:
   testacc:
+    name: Acceptance Tests (Confluent ${{ matrix.confluent }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        confluent:
+          # renovate: datasource=docker depName=confluentinc/cp-schema-registry
+          - "7.9.11"
+          # renovate: datasource=docker depName=confluentinc/cp-schema-registry
+          - "8.4.1"
+    env:
+      CONFLUENT_VERSION: ${{ matrix.confluent }}
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -40,7 +51,7 @@ jobs:
             -e KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1 \
             -e KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS=0 \
             -e CLUSTER_ID=MkU3OEVBNTcwNTJENDM2Qk \
-            confluentinc/cp-kafka:7.7.1
+            "confluentinc/cp-kafka:${CONFLUENT_VERSION}"
 
       - name: Start Schema Registry
         run: |
@@ -48,7 +59,7 @@ jobs:
             -e SCHEMA_REGISTRY_HOST_NAME=schema-registry \
             -e SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS=PLAINTEXT://kafka:29092 \
             -e SCHEMA_REGISTRY_LISTENERS=http://0.0.0.0:8081 \
-            confluentinc/cp-schema-registry:7.7.1
+            "confluentinc/cp-schema-registry:${CONFLUENT_VERSION}"
 
       - name: Wait for Schema Registry
         run: |

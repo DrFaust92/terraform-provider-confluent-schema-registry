@@ -10,5 +10,29 @@
   ],
   "vulnerabilityAlerts": {
     "groupName": "security updates"
-  }
+  },
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Confluent Platform versions in the acceptance test matrix",
+      "managerFilePatterns": [
+        "/^\\.github/workflows/test\\.yml$/"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\s+- \"(?<currentValue>[^\"]+)\""
+      ]
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "Each matrix entry tracks one Confluent major; add new majors by hand",
+      "matchDepNames": [
+        "confluentinc/cp-schema-registry"
+      ],
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "enabled": false
+    }
+  ]
 }

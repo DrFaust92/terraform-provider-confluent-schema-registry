@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	uuid "github.com/hashicorp/go-uuid"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )
 
 func TestAccResourceSchema_basic(t *testing.T) {
