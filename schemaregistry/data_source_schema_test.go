@@ -2,7 +2,6 @@ package schemaregistry
 
 import (
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 	"testing"
@@ -10,7 +9,7 @@ import (
 	"github.com/riferrei/srclient"
 
 	uuid "github.com/hashicorp/go-uuid"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )
 
 func TestAccDataSourceSchema_basic(t *testing.T) {
@@ -42,41 +41,7 @@ func TestAccDataSourceSchema_basic(t *testing.T) {
 func TestAccDataSourceSchemaReferences_basic(t *testing.T) {
 	// GIVEN
 	dataSourceName := "data.schemaregistry_schema.schemaWithReference"
-	url, found := os.LookupEnv("SCHEMA_REGISTRY_URL")
-	if !found {
-		t.Fatalf("SCHEMA_REGISTRY_URL must be set for acceptance tests")
-	}
-	hasBasicAuth := os.Getenv("SCHEMA_REGISTRY_USERNAME") != "" && os.Getenv("SCHEMA_REGISTRY_PASSWORD") != ""
-	hasBearerToken := os.Getenv("SCHEMA_REGISTRY_BEARER_TOKEN") != ""
-	hasOAuth2 := os.Getenv("SCHEMA_REGISTRY_OAUTH2_TOKEN_URL") != "" &&
-		os.Getenv("SCHEMA_REGISTRY_OAUTH2_CLIENT_ID") != "" &&
-		os.Getenv("SCHEMA_REGISTRY_OAUTH2_CLIENT_SECRET") != ""
-
-	if !hasBasicAuth && !hasBearerToken && !hasOAuth2 {
-		t.Fatal("Either SCHEMA_REGISTRY_USERNAME and SCHEMA_REGISTRY_PASSWORD, or SCHEMA_REGISTRY_BEARER_TOKEN, or SCHEMA_REGISTRY_OAUTH2_TOKEN_URL/CLIENT_ID/CLIENT_SECRET must be set for acceptance tests")
-	}
-
-	client := srclient.CreateSchemaRegistryClient(url)
-	if hasBasicAuth {
-		username := os.Getenv("SCHEMA_REGISTRY_USERNAME")
-		password := os.Getenv("SCHEMA_REGISTRY_PASSWORD")
-		client.SetCredentials(username, password)
-	}
-	if hasBearerToken {
-		token := os.Getenv("SCHEMA_REGISTRY_BEARER_TOKEN")
-		client.SetBearerToken(token)
-	}
-	if hasOAuth2 {
-		tokenURL := os.Getenv("SCHEMA_REGISTRY_OAUTH2_TOKEN_URL")
-		clientID := os.Getenv("SCHEMA_REGISTRY_OAUTH2_CLIENT_ID")
-		clientSecret := os.Getenv("SCHEMA_REGISTRY_OAUTH2_CLIENT_SECRET")
-
-		token, err := getToken(tokenURL, clientID, clientSecret, nil)
-		if err != nil {
-			t.Fatalf("Failed to get OAuth2 token: %s", err)
-		}
-		client.SetBearerToken(token)
-	}
+	client := testAccClient(t)
 
 	// AND
 	u, err := uuid.GenerateUUID()
@@ -138,41 +103,7 @@ func TestAccDataSourceSchemaReferences_basic(t *testing.T) {
 func TestAccDataSourceSchema_atVersion(t *testing.T) {
 	// GIVEN
 	dataSourceName := "data.schemaregistry_schema.schemaAtVersion"
-	url, found := os.LookupEnv("SCHEMA_REGISTRY_URL")
-	if !found {
-		t.Fatalf("SCHEMA_REGISTRY_URL must be set for acceptance tests")
-	}
-	hasBasicAuth := os.Getenv("SCHEMA_REGISTRY_USERNAME") != "" && os.Getenv("SCHEMA_REGISTRY_PASSWORD") != ""
-	hasBearerToken := os.Getenv("SCHEMA_REGISTRY_BEARER_TOKEN") != ""
-	hasOAuth2 := os.Getenv("SCHEMA_REGISTRY_OAUTH2_TOKEN_URL") != "" &&
-		os.Getenv("SCHEMA_REGISTRY_OAUTH2_CLIENT_ID") != "" &&
-		os.Getenv("SCHEMA_REGISTRY_OAUTH2_CLIENT_SECRET") != ""
-
-	if !hasBasicAuth && !hasBearerToken && !hasOAuth2 {
-		t.Fatal("Either SCHEMA_REGISTRY_USERNAME and SCHEMA_REGISTRY_PASSWORD, or SCHEMA_REGISTRY_BEARER_TOKEN, or SCHEMA_REGISTRY_OAUTH2_TOKEN_URL/CLIENT_ID/CLIENT_SECRET must be set for acceptance tests")
-	}
-
-	client := srclient.CreateSchemaRegistryClient(url)
-	if hasBasicAuth {
-		username := os.Getenv("SCHEMA_REGISTRY_USERNAME")
-		password := os.Getenv("SCHEMA_REGISTRY_PASSWORD")
-		client.SetCredentials(username, password)
-	}
-	if hasBearerToken {
-		token := os.Getenv("SCHEMA_REGISTRY_BEARER_TOKEN")
-		client.SetBearerToken(token)
-	}
-	if hasOAuth2 {
-		tokenURL := os.Getenv("SCHEMA_REGISTRY_OAUTH2_TOKEN_URL")
-		clientID := os.Getenv("SCHEMA_REGISTRY_OAUTH2_CLIENT_ID")
-		clientSecret := os.Getenv("SCHEMA_REGISTRY_OAUTH2_CLIENT_SECRET")
-
-		token, err := getToken(tokenURL, clientID, clientSecret, nil)
-		if err != nil {
-			t.Fatalf("Failed to get OAuth2 token: %s", err)
-		}
-		client.SetBearerToken(token)
-	}
+	client := testAccClient(t)
 
 	// AND
 	u, err := uuid.GenerateUUID()

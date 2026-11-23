@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	uuid "github.com/hashicorp/go-uuid"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )
 
 func TestAccResourceSchema_basic(t *testing.T) {
@@ -283,7 +283,8 @@ func TestAccResourceSchemaReferences_validateSchema(t *testing.T) {
 						},
 					},
 				}),
-				ExpectError: regexp.MustCompile(`Undefined name: \\"invalid\.schema\\"`),
+				// Confluent 7.x names the undefined type; 8.x only reports an invalid Avro schema.
+				ExpectError: regexp.MustCompile(`Undefined name: \\"invalid\.schema\\"|Invalid schema of type AVRO`),
 			},
 		},
 	})
