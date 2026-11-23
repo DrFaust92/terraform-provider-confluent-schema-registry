@@ -283,7 +283,8 @@ func TestAccResourceSchemaReferences_validateSchema(t *testing.T) {
 						},
 					},
 				}),
-				ExpectError: regexp.MustCompile(`Undefined name: \\"invalid\.schema\\"`),
+				// Confluent 7.x names the undefined type; 8.x only reports an invalid Avro schema.
+				ExpectError: regexp.MustCompile(`Undefined name: \\"invalid\.schema\\"|Invalid schema of type AVRO`),
 			},
 		},
 	})
