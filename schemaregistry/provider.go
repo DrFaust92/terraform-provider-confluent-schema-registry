@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
+	"github.com/hashicorp/terraform-plugin-framework/list"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
@@ -13,7 +14,10 @@ import (
 	"github.com/riferrei/srclient"
 )
 
-var _ provider.Provider = &schemaRegistryProvider{}
+var (
+	_ provider.Provider                  = &schemaRegistryProvider{}
+	_ provider.ProviderWithListResources = &schemaRegistryProvider{}
+)
 
 type schemaRegistryProvider struct {
 	version string
@@ -154,6 +158,7 @@ func (p *schemaRegistryProvider) Configure(ctx context.Context, req provider.Con
 
 	resp.ResourceData = client
 	resp.DataSourceData = client
+	resp.ListResourceData = client
 }
 
 func (p *schemaRegistryProvider) Resources(_ context.Context) []func() resource.Resource {
@@ -189,4 +194,10 @@ func getToken(tokenURL, clientID, clientSecret string, scopes []string) (string,
 		return "", err
 	}
 	return token.AccessToken, nil
+}
+
+func (p *schemaRegistryProvider) ListResources(_ context.Context) []func() list.ListResource {
+	return []func() list.ListResource{
+		newSchemaListResource,
+	}
 }
