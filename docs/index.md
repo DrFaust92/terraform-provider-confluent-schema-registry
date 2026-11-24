@@ -122,3 +122,7 @@ export SCHEMA_REGISTRY_OAUTH2_CLIENT_SECRET="your-client-secret"
 export SCHEMA_REGISTRY_URL="https://my.cool.registry"
 export SCHEMA_REGISTRY_BEARER_TOKEN="your-static-bearer-token"
 ```
+
+## Confluent Platform 8.0 and later: TLS SNI
+
+Schema Registry in Confluent Platform 8.0+ (Jetty 12) rejects HTTPS requests that do not send TLS SNI (`400 Invalid SNI`), unless the registry sets `sni.host.check.enabled=false`. The provider sends SNI automatically when `schema_registry_url` uses a hostname, but not when it uses an IP address, so point `schema_registry_url` at the registry's DNS name.

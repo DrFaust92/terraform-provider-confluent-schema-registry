@@ -36,6 +36,7 @@ data "schemaregistry_schema" "example" {
 - `references` (Attributes List) The referenced schema names list. (see [below for nested schema](#nestedatt--references))
 - `schema` (String) The schema string.
 - `schema_id` (Number) The schema ID.
+- `schema_type` (String) The schema type: `AVRO`, `PROTOBUF` or `JSON`.
 
 <a id="nestedatt--references"></a>
 ### Nested Schema for `references`

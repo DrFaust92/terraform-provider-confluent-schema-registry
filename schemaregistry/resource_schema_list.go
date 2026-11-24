@@ -77,7 +77,7 @@ func (r *schemaListResource) List(ctx context.Context, req list.ListRequest, str
 	subjects, err := r.client.GetSubjects()
 	if err != nil {
 		result := req.NewListResult(ctx)
-		result.Diagnostics.AddError("Failed to list subjects", err.Error())
+		result.Diagnostics.AddError("Failed to list subjects", errorDetail(err))
 		stream.Results = slices.Values([]list.ListResult{result})
 		return
 	}
