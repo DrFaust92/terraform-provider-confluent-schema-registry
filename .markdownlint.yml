@@ -17,3 +17,7 @@ MD033: false
 # Blanks around headings: tfplugindocs places the anchor directly above the
 # nested-schema heading, which this rule counts as a missing blank line.
 MD022: false
+# Duplicate headings: tfplugindocs repeats "Required"/"Optional" under
+# separate sections (schema, nested blocks, identity schema).
+MD024:
+  siblings_only: true
