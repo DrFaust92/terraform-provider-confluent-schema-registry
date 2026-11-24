@@ -3,6 +3,7 @@ package schemaregistry
 import (
 	"context"
 	"net/http"
+	"time"
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/clientcredentials"
@@ -20,10 +21,14 @@ type OAuth2Client struct {
 	httpClient *http.Client
 }
 
+// oauth2HTTPTimeout bounds token requests so an unresponsive token endpoint
+// cannot hang a plan or apply.
+const oauth2HTTPTimeout = 30 * time.Second
+
 func NewOAuth2Client(config *OAuth2Config) *OAuth2Client {
 	return &OAuth2Client{
 		config:     config,
-		httpClient: &http.Client{},
+		httpClient: &http.Client{Timeout: oauth2HTTPTimeout},
 	}
 }
 
