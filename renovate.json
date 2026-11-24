@@ -33,6 +33,20 @@
         "major"
       ],
       "enabled": false
+    },
+    {
+      "description": "Go indirect modules are ignored by Renovate by default; update them in one grouped weekly PR (go mod tidy runs after updates)",
+      "matchManagers": [
+        "gomod"
+      ],
+      "matchDepTypes": [
+        "indirect"
+      ],
+      "enabled": true,
+      "groupName": "go indirect dependencies",
+      "schedule": [
+        "before 6am on monday"
+      ]
     }
   ],
   "forkProcessing": "enabled"
