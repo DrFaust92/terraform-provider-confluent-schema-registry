@@ -15,8 +15,9 @@ import (
 )
 
 var (
-	_ provider.Provider                  = &schemaRegistryProvider{}
-	_ provider.ProviderWithListResources = &schemaRegistryProvider{}
+	_ provider.Provider                   = &schemaRegistryProvider{}
+	_ provider.ProviderWithListResources  = &schemaRegistryProvider{}
+	_ provider.ProviderWithValidateConfig = &schemaRegistryProvider{}
 )
 
 type schemaRegistryProvider struct {
@@ -170,6 +171,36 @@ func (p *schemaRegistryProvider) Resources(_ context.Context) []func() resource.
 func (p *schemaRegistryProvider) DataSources(_ context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
 		newSchemaDataSource,
+	}
+}
+
+// ValidateConfig reports conflicting authentication methods set in the
+// configuration itself. It applies the same rule Configure already enforces
+// (which also counts environment variables), only earlier: a method counts
+// when all of its settings are set.
+func (p *schemaRegistryProvider) ValidateConfig(ctx context.Context, req provider.ValidateConfigRequest, resp *provider.ValidateConfigResponse) {
+	var config schemaRegistryProviderModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	set := func(v types.String) bool { return !v.IsNull() && !v.IsUnknown() && v.ValueString() != "" }
+
+	methods := 0
+	if set(config.Username) && set(config.Password) {
+		methods++
+	}
+	if set(config.BearerToken) {
+		methods++
+	}
+	if set(config.OAuth2TokenURL) && set(config.OAuth2ClientID) && set(config.OAuth2ClientSecret) {
+		methods++
+	}
+	if methods > 1 {
+		resp.Diagnostics.AddError(
+			"Conflicting authentication methods",
+			"only one of username/password, bearer_token, or oauth2 can be set",
+		)
 	}
 }
 

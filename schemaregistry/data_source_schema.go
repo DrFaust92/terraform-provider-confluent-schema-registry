@@ -29,6 +29,7 @@ type schemaDataSourceModel struct {
 	Version       types.Int64            `tfsdk:"version"`
 	SchemaID      types.Int64            `tfsdk:"schema_id"`
 	Schema        types.String           `tfsdk:"schema"`
+	SchemaType    types.String           `tfsdk:"schema_type"`
 	Compatibility types.String           `tfsdk:"compatibility"`
 	References    []schemaReferenceModel `tfsdk:"references"`
 }
@@ -60,6 +61,10 @@ func (d *schemaDataSource) Schema(_ context.Context, _ datasource.SchemaRequest,
 			},
 			"schema": schema.StringAttribute{
 				MarkdownDescription: "The schema string.",
+				Computed:            true,
+			},
+			"schema_type": schema.StringAttribute{
+				MarkdownDescription: "The schema type: `AVRO`, `PROTOBUF` or `JSON`.",
 				Computed:            true,
 			},
 			"compatibility": schema.StringAttribute{
@@ -119,12 +124,16 @@ func (d *schemaDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 		sch, err = d.client.GetLatestSchema(subject)
 	}
 	if err != nil {
-		resp.Diagnostics.AddError("Failed to read schema", err.Error())
+		resp.Diagnostics.AddError("Failed to read schema", errorDetail(err))
 		return
 	}
 
 	config.ID = types.StringValue(subject)
 	config.Schema = types.StringValue(sch.Schema())
+	config.SchemaType = types.StringValue(string(srclient.Avro))
+	if t := sch.SchemaType(); t != nil && *t != "" {
+		config.SchemaType = types.StringValue(string(*t))
+	}
 	config.SchemaID = types.Int64Value(int64(sch.ID()))
 	config.Version = types.Int64Value(int64(sch.Version()))
 	config.References = flattenReferences(sch.References())

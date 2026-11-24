@@ -2,27 +2,37 @@ package schemaregistry
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 
-	"github.com/hashicorp/terraform-plugin-framework-jsontypes/jsontypes"
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/identityschema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/riferrei/srclient"
 )
 
 var (
-	_ resource.Resource                = &schemaResource{}
-	_ resource.ResourceWithConfigure   = &schemaResource{}
-	_ resource.ResourceWithImportState = &schemaResource{}
-	_ resource.ResourceWithIdentity    = &schemaResource{}
+	_ resource.Resource                   = &schemaResource{}
+	_ resource.ResourceWithConfigure      = &schemaResource{}
+	_ resource.ResourceWithImportState    = &schemaResource{}
+	_ resource.ResourceWithIdentity       = &schemaResource{}
+	_ resource.ResourceWithValidateConfig = &schemaResource{}
 )
+
+// schemaTypes are the schema types supported by Schema Registry.
+var schemaTypes = []string{string(srclient.Avro), string(srclient.Protobuf), string(srclient.Json)}
+
+// compatibilityLevels are the Schema Registry compatibility levels.
+var compatibilityLevels = []string{"BACKWARD", "BACKWARD_TRANSITIVE", "FORWARD", "FORWARD_TRANSITIVE", "FULL", "FULL_TRANSITIVE", "NONE"}
 
 // schemaResourceIdentityModel is the resource identity: the subject name.
 type schemaResourceIdentityModel struct {
@@ -46,7 +56,8 @@ type schemaReferenceModel struct {
 type schemaResourceModel struct {
 	ID            types.String           `tfsdk:"id"`
 	Subject       types.String           `tfsdk:"subject"`
-	Schema        jsontypes.Normalized   `tfsdk:"schema"`
+	Schema        schemaString           `tfsdk:"schema"`
+	SchemaType    types.String           `tfsdk:"schema_type"`
 	SchemaID      types.Int64            `tfsdk:"schema_id"`
 	Version       types.Int64            `tfsdk:"version"`
 	Compatibility types.String           `tfsdk:"compatibility"`
@@ -76,9 +87,18 @@ func (r *schemaResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 				},
 			},
 			"schema": schema.StringAttribute{
-				MarkdownDescription: "The schema string.",
+				MarkdownDescription: "The schema string. For `AVRO` and `JSON` schemas it must be valid JSON and is compared as normalized JSON; `PROTOBUF` schemas are compared ignoring whitespace.",
 				Required:            true,
-				CustomType:          jsontypes.NormalizedType{},
+				CustomType:          schemaStringType{},
+			},
+			"schema_type": schema.StringAttribute{
+				MarkdownDescription: "The schema type: `AVRO`, `PROTOBUF` or `JSON`. Defaults to `AVRO`.",
+				Optional:            true,
+				Computed:            true,
+				Default:             stringdefault.StaticString(string(srclient.Avro)),
+				Validators: []validator.String{
+					stringvalidator.OneOf(schemaTypes...),
+				},
 			},
 			"schema_id": schema.Int64Attribute{
 				MarkdownDescription: "The ID of the schema.",
@@ -89,9 +109,12 @@ func (r *schemaResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 				Computed:            true,
 			},
 			"compatibility": schema.StringAttribute{
-				MarkdownDescription: "The compatibility level of the subject.",
+				MarkdownDescription: "The compatibility level of the subject: `BACKWARD`, `BACKWARD_TRANSITIVE`, `FORWARD`, `FORWARD_TRANSITIVE`, `FULL`, `FULL_TRANSITIVE` or `NONE`.",
 				Optional:            true,
 				Computed:            true,
+				Validators: []validator.String{
+					stringvalidator.OneOfCaseInsensitive(compatibilityLevels...),
+				},
 			},
 		},
 		Blocks: map[string]schema.Block{
@@ -149,14 +172,14 @@ func (r *schemaResource) Create(ctx context.Context, req resource.CreateRequest,
 	}
 
 	subject := plan.Subject.ValueString()
-	if _, err := r.client.CreateSchema(subject, plan.Schema.ValueString(), srclient.Avro, expandReferences(plan.Reference)...); err != nil {
-		resp.Diagnostics.AddError("Failed to create schema", err.Error())
+	if _, err := r.client.CreateSchema(subject, plan.Schema.ValueString(), schemaTypeOf(plan.SchemaType), expandReferences(plan.Reference)...); err != nil {
+		resp.Diagnostics.AddError("Failed to create schema", errorDetail(err))
 		return
 	}
 
 	if !plan.Compatibility.IsNull() && !plan.Compatibility.IsUnknown() && plan.Compatibility.ValueString() != "" {
 		if _, err := r.client.ChangeSubjectCompatibilityLevel(subject, srclient.CompatibilityLevel(plan.Compatibility.ValueString())); err != nil {
-			resp.Diagnostics.AddError("Failed to set compatibility level", err.Error())
+			resp.Diagnostics.AddError("Failed to set compatibility level", errorDetail(err))
 			return
 		}
 	}
@@ -202,19 +225,19 @@ func (r *schemaResource) Update(ctx context.Context, req resource.UpdateRequest,
 	}
 
 	subject := plan.ID.ValueString()
-	if _, err := r.client.CreateSchema(subject, plan.Schema.ValueString(), srclient.Avro, expandReferences(plan.Reference)...); err != nil {
+	if _, err := r.client.CreateSchema(subject, plan.Schema.ValueString(), schemaTypeOf(plan.SchemaType), expandReferences(plan.Reference)...); err != nil {
 		// 42201 / 409 is the incompatible-schema error from Confluent Schema Registry.
 		if strings.Contains(err.Error(), "409") || strings.Contains(err.Error(), "42201") {
 			resp.Diagnostics.AddError("Invalid schema", `invalid "schema": incompatible`)
 			return
 		}
-		resp.Diagnostics.AddError("Failed to update schema", err.Error())
+		resp.Diagnostics.AddError("Failed to update schema", errorDetail(err))
 		return
 	}
 
 	if !plan.Compatibility.Equal(state.Compatibility) && !plan.Compatibility.IsNull() && !plan.Compatibility.IsUnknown() && plan.Compatibility.ValueString() != "" {
 		if _, err := r.client.ChangeSubjectCompatibilityLevel(subject, srclient.CompatibilityLevel(plan.Compatibility.ValueString())); err != nil {
-			resp.Diagnostics.AddError("Failed to set compatibility level", err.Error())
+			resp.Diagnostics.AddError("Failed to set compatibility level", errorDetail(err))
 			return
 		}
 	}
@@ -240,11 +263,11 @@ func (r *schemaResource) Delete(ctx context.Context, req resource.DeleteRequest,
 	subject := state.ID.ValueString()
 	// Since srclient 0.7.4 a subject must be soft-deleted then hard-deleted.
 	if err := r.client.DeleteSubject(subject, false); err != nil {
-		resp.Diagnostics.AddError("Failed to delete schema", err.Error())
+		resp.Diagnostics.AddError("Failed to delete schema", errorDetail(err))
 		return
 	}
 	if err := r.client.DeleteSubject(subject, true); err != nil {
-		resp.Diagnostics.AddError("Failed to delete schema", err.Error())
+		resp.Diagnostics.AddError("Failed to delete schema", errorDetail(err))
 		return
 	}
 }
@@ -263,18 +286,35 @@ func (r *schemaResource) readInto(m *schemaResourceModel, diags *diag.Diagnostic
 		if strings.Contains(err.Error(), "404") {
 			return false
 		}
-		diags.AddError("Failed to read schema", err.Error())
+		diags.AddError("Failed to read schema", errorDetail(err))
 		return false
 	}
 
 	compatibility, err := r.client.GetCompatibilityLevel(subject, true)
 	if err != nil {
-		diags.AddError("Failed to read compatibility level", err.Error())
+		diags.AddError("Failed to read compatibility level", errorDetail(err))
 		return false
 	}
 
+	schemaType := srclient.Avro
+	if t := sch.SchemaType(); t != nil && *t != "" {
+		schemaType = *t
+	}
+
+	// Keep the configured text when the registry stores a canonicalized form
+	// of the same schema (Schema Registry re-renders PROTOBUF schemas): if the
+	// prior value resolves to the latest registered schema, it is the same
+	// schema. AVRO and JSON keep storing the registry's text as before.
+	registered := sch.Schema()
+	if schemaType == srclient.Protobuf && !m.Schema.IsNull() && !m.Schema.IsUnknown() && m.Schema.ValueString() != registered {
+		if found, err := r.client.LookupSchema(subject, m.Schema.ValueString(), schemaType, sch.References()...); err == nil && found.ID() == sch.ID() {
+			registered = m.Schema.ValueString()
+		}
+	}
+
 	m.Subject = types.StringValue(subject)
-	m.Schema = jsontypes.NewNormalizedValue(sch.Schema())
+	m.Schema = newSchemaString(registered)
+	m.SchemaType = types.StringValue(string(schemaType))
 	m.SchemaID = types.Int64Value(int64(sch.ID()))
 	m.Version = types.Int64Value(int64(sch.Version()))
 	m.Reference = flattenReferences(sch.References())
@@ -282,6 +322,35 @@ func (r *schemaResource) readInto(m *schemaResourceModel, diags *diag.Diagnostic
 		m.Compatibility = types.StringValue(string(*compatibility))
 	}
 	return true
+}
+
+// ValidateConfig requires AVRO and JSON schemas to be valid JSON, as the
+// previous jsontypes.Normalized schema type did for every schema.
+func (r *schemaResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	var config schemaResourceModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if config.Schema.IsNull() || config.Schema.IsUnknown() || config.SchemaType.IsUnknown() {
+		return
+	}
+	if schemaTypeOf(config.SchemaType) == srclient.Protobuf {
+		return
+	}
+	if !json.Valid([]byte(config.Schema.ValueString())) {
+		resp.Diagnostics.AddAttributeError(path.Root("schema"), "Invalid JSON String Value",
+			"AVRO and JSON schemas must be valid JSON. Set schema_type = \"PROTOBUF\" for Protobuf schemas.")
+	}
+}
+
+// schemaTypeOf maps the schema_type attribute to the client type; null (the
+// attribute did not exist before) means AVRO.
+func schemaTypeOf(v types.String) srclient.SchemaType {
+	if v.IsNull() || v.IsUnknown() || v.ValueString() == "" {
+		return srclient.Avro
+	}
+	return srclient.SchemaType(v.ValueString())
 }
 
 func expandReferences(references []schemaReferenceModel) []srclient.Reference {
